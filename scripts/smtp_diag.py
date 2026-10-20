@@ -15,8 +15,12 @@ HOST = "smtp.gmail.com"
 out_path = sys.argv[1] if len(sys.argv) > 1 else "diag/smtp.txt"
 os.makedirs(os.path.dirname(out_path), exist_ok=True)
 user = os.environ.get("GMAIL_USER")
-pw = os.environ.get("GMAIL_APP_PASSWORD")
-lines = [f"secrets present: user={bool(user)} password={bool(pw)} pw_len={len(pw) if pw else 0}"]
+pw_raw = os.environ.get("GMAIL_APP_PASSWORD") or ""
+pw = pw_raw.replace(" ", "").strip()
+import re
+shape = "".join("a" if c.islower() else "A" if c.isupper() else "9" if c.isdigit() else "_" if c == " " else "?" for c in pw_raw)
+lines = [f"secrets present: user={bool(user)} user_len={len(user or '')} user_shape={re.sub('[a-z0-9]', 'x', user or '')} "
+         f"raw_len={len(pw_raw)} stripped_len={len(pw)} shape={shape}"]
 
 try:
     lines.append(f"resolve: {socket.gethostbyname_ex(HOST)}")
