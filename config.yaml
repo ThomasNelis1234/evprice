@@ -1,0 +1,31 @@
+# Non-secret configuration. Secrets (GMAIL_USER, GMAIL_APP_PASSWORD) come from the environment only.
+bidding_zone: BE
+timezone: Europe/Brussels
+
+# Graph horizon starts at this local time on the run day, whatever the actual run time.
+horizon_start_local: "14:00"
+# The run exits without doing anything before this local time.
+earliest_send_local: "13:00"
+# After this local time the email is sent even if tomorrow's prices are still missing.
+publication_cutoff_local: "18:00"
+
+charging_duration_hours: 4      # 2, 4, 6 or 8
+history_days: 30
+
+recipient: thomasnelis1234@gmail.com
+
+sources:
+  actual: https://api.energy-charts.info
+  forecast: https://epexpredictor.batzill.com
+
+http:
+  timeout_seconds: 30
+  retries: 3
+  backoff_seconds: 5
+
+smtp:
+  host: smtp.gmail.com
+  port: 587
+
+state_file: state/runs.json
+output_dir: out            # dry-run artifacts (PNG, .eml) land here

@@ -1,0 +1,73 @@
+name: Daily EV charging price alert
+
+on:
+  schedule:
+    # Every 30 minutes, 11:00–17:30 UTC = 13:00–19:30 CEST / 12:00–18:30 CET.
+    # Each tick is idempotent: it exits immediately before 13:00 local, once today's
+    # email has been sent, or while tomorrow's prices are still unpublished (until the cutoff).
+    - cron: "0,30 11-17 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Render only, send nothing (artifacts uploaded)"
+        type: boolean
+        default: false
+      force:
+        description: "Ignore time gates and already-sent state"
+        type: boolean
+        default: false
+
+concurrency:
+  group: evprice-daily
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: pip install -e .
+
+      - name: Run tests
+        run: python -m unittest discover -s tests -t . -q
+
+      - name: Run daily job
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          TZ: Europe/Brussels
+        run: |
+          ARGS="--save-fixtures tests/fixtures/live"
+          if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS="$ARGS --dry-run"; fi
+          if [ "${{ inputs.force }}" = "true" ]; then ARGS="$ARGS --force"; fi
+          python -m evprice.main $ARGS
+
+      - name: Upload dry-run output
+        if: ${{ inputs.dry_run }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: dry-run-output
+          path: out/
+
+      - name: Commit run state and live fixtures
+        if: ${{ always() && !inputs.dry_run }}
+        run: |
+          git config user.name "evprice-bot"
+          git config user.email "evprice-bot@users.noreply.github.com"
+          git add state/runs.json tests/fixtures/live || true
+          if ! git diff --cached --quiet; then
+            git commit -m "state: run $(date -u +%Y-%m-%dT%H:%MZ) [skip ci]"
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+            git push
+          fi
