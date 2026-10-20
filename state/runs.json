@@ -1,4 +1,16 @@
 {
-  "updated_at": null,
-  "runs": []
+  "updated_at": "2026-10-20T19:46:11+00:00",
+  "runs": [
+    {
+      "run_date": "2026-10-20",
+      "started_at": "2026-10-20T19:45:38+00:00",
+      "status": "failed",
+      "reason": "send failed: email could not be sent after 3 attempts: Connection unexpectedly closed",
+      "sent_at": null,
+      "warnings": [],
+      "actual_slots": 0,
+      "forecast_slots": 0,
+      "tomorrow_published": null
+    }
+  ]
 }
