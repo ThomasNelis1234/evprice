@@ -47,7 +47,7 @@ class Config:
     publication_cutoff_local: time
     charging_duration_hours: int
     history_days: int
-    recipient: str
+    recipients: tuple[str, ...]
     actual_base_url: str
     forecast_base_url: str
     http: HttpConfig = field(default_factory=HttpConfig)
@@ -67,6 +67,19 @@ def _parse_time(value: str, name: str) -> time:
         return time(int(h), int(m))
     except Exception as exc:  # noqa: BLE001
         raise ConfigError(f"{name} must be HH:MM, got {value!r}") from exc
+
+
+def _parse_recipients(raw: dict) -> tuple[str, ...]:
+    value = raw.get("recipients", raw.get("recipient"))
+    if isinstance(value, str):
+        value = [value]
+    recipients = tuple(str(v).strip() for v in (value or []) if str(v).strip())
+    if not recipients:
+        raise ConfigError("config needs at least one address under 'recipients'")
+    for r in recipients:
+        if "@" not in r:
+            raise ConfigError(f"invalid recipient address: {r!r}")
+    return recipients
 
 
 def load_config(path: str | Path = "config.yaml", env: dict | None = None) -> Config:
@@ -89,7 +102,7 @@ def load_config(path: str | Path = "config.yaml", env: dict | None = None) -> Co
         publication_cutoff_local=_parse_time(raw.get("publication_cutoff_local", "18:00"), "publication_cutoff_local"),
         charging_duration_hours=duration,
         history_days=int(raw.get("history_days", 30)),
-        recipient=str(raw["recipient"]),
+        recipients=_parse_recipients(raw),
         actual_base_url=str(sources.get("actual", "https://api.energy-charts.info")).rstrip("/"),
         forecast_base_url=str(sources.get("forecast", "https://epexpredictor.batzill.com")).rstrip("/"),
         http=HttpConfig(

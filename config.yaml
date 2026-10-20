@@ -12,7 +12,10 @@ publication_cutoff_local: "18:00"
 charging_duration_hours: 4      # 2, 4, 6 or 8
 history_days: 30
 
-recipient: sender@example.com
+recipients:
+  - sender@example.com
+  - t.vandedorpe@outlook.com
+  - recipient-2@example.com
 
 sources:
   actual: https://api.energy-charts.info

@@ -27,7 +27,7 @@ Design, assumptions and verified API details: [ARCHITECTURE.md](ARCHITECTURE.md)
 3. Repository → Settings → Secrets and variables → Actions → add:
    - `GMAIL_USER` — the Gmail address
    - `GMAIL_APP_PASSWORD` — the 16-character app password
-4. Edit `config.yaml` (recipient, charging duration, times).
+4. Edit `config.yaml` (recipients, charging duration, times).
 5. Actions → "Daily EV charging price alert" → *Run workflow* with **dry_run** ticked. Download the
    `dry-run-output` artifact and check the PNG. Then run again with **force** ticked to receive the first
    real email immediately.
@@ -57,7 +57,7 @@ GMAIL_USER=... GMAIL_APP_PASSWORD=... python -m evprice.main --force   # send no
 | `publication_cutoff_local` | After this, send even if tomorrow is unpublished (default 18:00) |
 | `charging_duration_hours` | 2 / 4 / 6 / 8 — consecutive hours to find |
 | `history_days` | Days in the long-run average |
-| `recipient` | Email address |
+| `recipients` | List of email addresses (one email, all in To) |
 
 Secrets live only in environment variables / GitHub Secrets.
 

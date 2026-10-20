@@ -62,7 +62,7 @@ def build_message(cfg: Config, bundle: DailyBundle, recs: list[Recommendation], 
     msg = EmailMessage()
     msg["Subject"] = subject_line(bundle, recs)
     msg["From"] = cfg.secrets.gmail_user or "evprice@localhost"
-    msg["To"] = cfg.recipient
+    msg["To"] = ", ".join(cfg.recipients)
     text = body_text(bundle, recs, tz)
     msg.set_content(text)
 
@@ -113,7 +113,7 @@ def send(cfg: Config, msg: EmailMessage, retries: int = 3, sleep=time.sleep) -> 
     for attempt in range(1, retries + 1):
         try:
             _deliver(cfg, msg)
-            log.info("email sent to %s", cfg.recipient)
+            log.info("email sent to %s", ", ".join(cfg.recipients))
             return
         except smtplib.SMTPAuthenticationError as exc:
             raise MailError(f"SMTP authentication failed: {exc}") from exc
