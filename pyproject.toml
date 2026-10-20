@@ -1,0 +1,21 @@
+[project]
+name = "evprice"
+version = "0.1.0"
+description = "Daily email with the cheapest EV charging windows from Belgian quarter-hourly day-ahead prices"
+requires-python = ">=3.11"
+dependencies = [
+    "requests>=2.31",
+    "pandas>=2.1",
+    "matplotlib>=3.8",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+evprice = "evprice.main:cli"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
