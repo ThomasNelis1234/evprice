@@ -80,17 +80,39 @@ def build_message(cfg: Config, bundle: DailyBundle, recs: list[Recommendation], 
     return msg
 
 
+def _deliver(cfg: Config, msg: EmailMessage) -> None:
+    """Try implicit TLS (465) first, then STARTTLS (587). Some runners close 587 connections."""
+    errors = []
+    for mode in ("ssl", "starttls"):
+        try:
+            if mode == "ssl":
+                with smtplib.SMTP_SSL(cfg.smtp.host, 465, timeout=30) as s:
+                    s.login(cfg.secrets.gmail_user, cfg.secrets.gmail_app_password)
+                    s.send_message(msg)
+            else:
+                with smtplib.SMTP(cfg.smtp.host, cfg.smtp.port, timeout=30) as s:
+                    s.ehlo()
+                    s.starttls()
+                    s.ehlo()
+                    s.login(cfg.secrets.gmail_user, cfg.secrets.gmail_app_password)
+                    s.send_message(msg)
+            log.info("email sent via %s", mode)
+            return
+        except smtplib.SMTPAuthenticationError:
+            raise
+        except (smtplib.SMTPException, OSError) as exc:
+            log.warning("%s delivery failed: %s", mode, exc)
+            errors.append(f"{mode}: {exc}")
+    raise smtplib.SMTPException("; ".join(errors))
+
+
 def send(cfg: Config, msg: EmailMessage, retries: int = 3, sleep=time.sleep) -> None:
     if not cfg.secrets.complete:
         raise MailError("GMAIL_USER / GMAIL_APP_PASSWORD not set")
     last: Exception | None = None
     for attempt in range(1, retries + 1):
         try:
-            with smtplib.SMTP(cfg.smtp.host, cfg.smtp.port, timeout=30) as s:
-                s.ehlo()
-                s.starttls()
-                s.login(cfg.secrets.gmail_user, cfg.secrets.gmail_app_password)
-                s.send_message(msg)
+            _deliver(cfg, msg)
             log.info("email sent to %s", cfg.recipient)
             return
         except smtplib.SMTPAuthenticationError as exc:
