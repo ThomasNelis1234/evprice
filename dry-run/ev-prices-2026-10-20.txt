@@ -1,0 +1,10 @@
+Cheapest 4-hour charging window(s), based on published market prices:
+  Best:        Wednesday 21 Oct 12:45 → 16:45   avg 157.7 EUR/MWh
+  Alternative: Wednesday 21 Oct 01:30 → 05:30   avg 171.4 EUR/MWh
+
+Average over the shown published period: 205.4 EUR/MWh
+Average over the previous 30 days:        168.1 EUR/MWh
+
+Day after tomorrow (Thursday): forecast only, average 180.2 EUR/MWh — an estimate, not a market price. Not used for the recommendation.
+
+Prices are raw wholesale day-ahead prices (EUR/MWh, before taxes and grid costs), fetched 2026-10-20 21:44 CEST.
