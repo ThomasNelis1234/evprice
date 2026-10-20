@@ -1,12 +1,12 @@
-secrets present: user=True password=True pw_len=19
-resolve: ('smtp.gmail.com', [], ['142.251.163.109'])
+secrets present: user=True user_len=25 user_shape=xxxxxxxxxxxxxxx@xxxxx.xxx raw_len=19 stripped_len=16 shape=aaaa_aaaa_aaaa_aaaa
+resolve: ('smtp.gmail.com', [], ['142.251.2.108'])
 tcp 465: open
 tcp 587: open
 --- ssl 465
 error: SMTPServerDisconnected: Connection unexpectedly closed
 smtplib.SMTPServerDisconnected: Connection unexpectedly closed
 send: 'ehlo evprice.github.actions\r\n'
-reply: b'250-smtp.gmail.com at your service, [52.224.244.98]\r\n'
+reply: b'250-smtp.gmail.com at your service, [57.154.3.254]\r\n'
 reply: b'250-SIZE 35882577\r\n'
 reply: b'250-8BITMIME\r\n'
 reply: b'250-AUTH LOGIN PLAIN XOAUTH2 PL [redacted]
@@ -17,14 +17,14 @@ reply: b'250 SMTPUTF8\r\n'
 reply: retcode (250); Msg: b'smtp.gmail. [redacted]
 send: 'AUTH PLAIN AHRob21hc25lbGlzMTIzNE [redacted]
 reply: b'535-5.7.8 Username and Password not accepted. For more information, go to\r\n'
-reply: b'535 5.7.8  https://support.google.com/mail/?p=BadCredentials 6a1803df08f44-91c10baeadcsm6671096d6.19 - gsmtp\r\n'
-reply: retcode (535); Msg: b'5.7.8 Username and Password not accepted. For more information, go to\n5.7.8  https://support.google.com/mail/?p=BadCredentials 6a1803df08f44-91c10baeadcsm6671096d6.19 - gsmtp'
+reply: b'535 5.7.8  https://support.google.com/mail/?p=BadCredentials 5a478bee46e88-3674198fb21sm745688eec.23 - gsmtp\r\n'
+reply: retcode (535); Msg: b'5.7.8 Username and Password not accepted. For more information, go to\n5.7.8  https://support.google.com/mail/?p=BadCredentials 5a478bee46e88-3674198fb21sm745688eec.23 - gsmtp'
 send: 'AUTH LOGIN dGhvbWFzbmVsaXMxMjM0QG [redacted]
 --- starttls 587
 error: SMTPServerDisconnected: Connection unexpectedly closed
 smtplib.SMTPServerDisconnected: Connection unexpectedly closed
 send: 'ehlo evprice.github.actions\r\n'
-reply: b'250-smtp.gmail.com at your service, [52.224.244.98]\r\n'
+reply: b'250-smtp.gmail.com at your service, [57.154.3.254]\r\n'
 reply: b'250-SIZE 35882577\r\n'
 reply: b'250-8BITMIME\r\n'
 reply: b'250-STARTTLS\r\n'
@@ -32,12 +32,12 @@ reply: b'250-ENHANCEDSTATUSCODES\r\n'
 reply: b'250-PIPELINING\r\n'
 reply: b'250-CHUNKING\r\n'
 reply: b'250 SMTPUTF8\r\n'
-reply: retcode (250); Msg: b'smtp.gmail.com at your service, [52.224.244.98]\nSIZE 35882577\n8BITMIME\nSTARTTLS\nENHANCEDSTATUSCODES\nPIPELINING\nCHUNKING\nSMTPUTF8'
+reply: retcode (250); Msg: b'smtp.gmail.com at your service, [57.154.3.254]\nSIZE 35882577\n8BITMIME\nSTARTTLS\nENHANCEDSTATUSCODES\nPIPELINING\nCHUNKING\nSMTPUTF8'
 send: 'STARTTLS\r\n'
 reply: b'220 2.0.0 Ready to start TLS\r\n'
 reply: retcode (220); Msg: b'2.0.0 Ready to start TLS'
 send: 'ehlo evprice.github.actions\r\n'
-reply: b'250-smtp.gmail.com at your service, [52.224.244.98]\r\n'
+reply: b'250-smtp.gmail.com at your service, [57.154.3.254]\r\n'
 reply: b'250-SIZE 35882577\r\n'
 reply: b'250-8BITMIME\r\n'
 reply: b'250-AUTH LOGIN PLAIN XOAUTH2 PL [redacted]
@@ -48,6 +48,6 @@ reply: b'250 SMTPUTF8\r\n'
 reply: retcode (250); Msg: b'smtp.gmail. [redacted]
 send: 'AUTH PLAIN AHRob21hc25lbGlzMTIzNE [redacted]
 reply: b'535-5.7.8 Username and Password not accepted. For more information, go to\r\n'
-reply: b'535 5.7.8  https://support.google.com/mail/?p=BadCredentials d75a77b69052e-53698b7adbbsm3740591cf.18 - gsmtp\r\n'
-reply: retcode (535); Msg: b'5.7.8 Username and Password not accepted. For more information, go to\n5.7.8  https://support.google.com/mail/?p=BadCredentials d75a77b69052e-53698b7adbbsm3740591cf.18 - gsmtp'
+reply: b'535 5.7.8  https://support.google.com/mail/?p=BadCredentials 5a478bee46e88-3673b1d0ab7sm981003eec.0 - gsmtp\r\n'
+reply: retcode (535); Msg: b'5.7.8 Username and Password not accepted. For more information, go to\n5.7.8  https://support.google.com/mail/?p=BadCredentials 5a478bee46e88-3673b1d0ab7sm981003eec.0 - gsmtp'
 send: 'AUTH LOGIN dGhvbWFzbmVsaXMxMjM0QG [redacted]
