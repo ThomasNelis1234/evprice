@@ -12,7 +12,10 @@ publication_cutoff_local: "18:00"
 charging_duration_hours: 4      # 2, 4, 6 or 8
 history_days: 30
 
-recipient: thomasnelis1234@gmail.com
+recipients:
+  - thomasnelis1234@gmail.com
+  - t.vandedorpe@outlook.com
+  - rosita.hendricks@icloud.com
 
 sources:
   actual: https://api.energy-charts.info

@@ -93,7 +93,8 @@ class TestRun(Harness):
     def test_email_structure(self):
         self.go("2026-10-20T14:20")
         msg = self.sent[0]
-        self.assertEqual(msg["To"], self.cfg.recipient)
+        self.assertEqual(msg["To"], ", ".join(self.cfg.recipients))
+        self.assertEqual(len(self.cfg.recipients), 3)
         parts = [p.get_content_type() for p in msg.walk()]
         self.assertIn("text/plain", parts)
         self.assertIn("text/html", parts)
