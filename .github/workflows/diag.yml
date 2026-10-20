@@ -1,0 +1,29 @@
+name: SMTP diagnostics
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Probe SMTP
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python scripts/smtp_diag.py diag/smtp.txt
+      - name: Commit transcript
+        if: always()
+        run: |
+          git config user.name "evprice-bot"
+          git config user.email "evprice-bot@users.noreply.github.com"
+          git add diag
+          git diff --cached --quiet || (git commit -m "diag: smtp transcript [skip ci]" && git pull --rebase --autostash origin main && git push)
