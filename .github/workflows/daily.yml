@@ -60,12 +60,18 @@ jobs:
           name: dry-run-output
           path: out/
 
-      - name: Commit run state and live fixtures
-        if: ${{ always() && !inputs.dry_run }}
+      - name: Commit run state, live fixtures and dry-run output
+        if: ${{ always() }}
         run: |
           git config user.name "evprice-bot"
           git config user.email "evprice-bot@users.noreply.github.com"
-          git add state/runs.json tests/fixtures/live || true
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            mkdir -p dry-run && cp -f out/* dry-run/ 2>/dev/null || true
+            git add dry-run
+          else
+            git add state/runs.json
+          fi
+          git add tests/fixtures/live || true
           if ! git diff --cached --quiet; then
             git commit -m "state: run $(date -u +%Y-%m-%dT%H:%MZ) [skip ci]"
             git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
