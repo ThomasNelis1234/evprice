@@ -100,7 +100,8 @@ def load_config(path: str | Path = "config.yaml", env: dict | None = None) -> Co
         smtp=SmtpConfig(host=str(smtp.get("host", "smtp.gmail.com")), port=int(smtp.get("port", 587))),
         secrets=Secrets(
             gmail_user=env.get("GMAIL_USER") or None,
-            gmail_app_password=env.get("GMAIL_APP_PASSWORD") or None,
+            # Google shows app passwords as "abcd efgh ijkl mnop"; the spaces are not part of the secret.
+            gmail_app_password=(env.get("GMAIL_APP_PASSWORD") or "").replace(" ", "").strip() or None,
         ),
         state_file=Path(raw.get("state_file", "state/runs.json")),
         output_dir=Path(raw.get("output_dir", "out")),

@@ -6,3 +6,4 @@ dist/
 out/
 .env
 .venv/
+diag/
