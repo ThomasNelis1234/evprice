@@ -181,6 +181,8 @@ Logging: structured log lines to the Actions log; `state/runs.json` keeps the la
 ├── pyproject.toml
 ├── src/evprice/
 │   ├── config.py        # load yaml + env
+│   ├── http.py          # requests + retry
+│   ├── timeutil.py      # DST-safe slot arithmetic
 │   ├── sources/
 │   │   ├── energy_charts.py
 │   │   ├── epex_predictor.py
@@ -192,25 +194,27 @@ Logging: structured log lines to the Actions log; `state/runs.json` keeps the la
 │   ├── mailer.py
 │   ├── state.py
 │   └── main.py          # orchestrates one run
+├── scripts/demo.py      # offline end-to-end run on synthetic data
 ├── tests/
-│   ├── fixtures/        # recorded API responses incl. DST days
+│   ├── synth.py         # synthetic payloads matching the verified schemas
+│   ├── fixtures/live/   # raw responses saved by each real run
 │   └── test_*.py
 ├── state/runs.json
 └── .github/workflows/daily.yml
 ```
 
-Dependencies: `httpx`, `pandas`, `matplotlib`, `pyyaml`, `tenacity`, `pytest`, `freezegun`. No database, no web framework.
+Dependencies: `requests`, `pandas`, `matplotlib`, `pyyaml` only (tests use the standard library `unittest`; retries and the clock are injected rather than pulled from `tenacity`/`freezegun`). No database, no web framework.
 
 ## 12. Implementation phases
 
 | Phase | Deliverable | Test of done |
 |---|---|---|
-| 0 — Probe | Two throwaway scripts that call both APIs for BE and print shape, timestamps, unit, slot counts; recorded responses saved as fixtures | Assumptions A1–A3 confirmed or corrected in writing |
-| 1 — Ingest | `sources/`, `models.py`, `validate.py` | Unit tests pass on normal day, DST days, missing-tomorrow, malformed response |
-| 2 — Compute | `windows.py`, averages | Unit tests incl. edge cases in §6 |
-| 3 — Graph | `plot.py` producing the PNG from a `DailyBundle` | Visual check of a real day + a forecast-unavailable day |
-| 4 — Email | `mailer.py`, one manual send | Email received with inline image and attachment |
-| 5 — Automate | `main.py`, `state.py`, workflow, state commit-back | Two consecutive triggers on the same day send exactly one email |
+| 0 — Probe ✅ | Two throwaway scripts that call both APIs for BE and print shape, timestamps, unit, slot counts; recorded responses saved as fixtures | Assumptions A1–A3 confirmed or corrected in writing |
+| 1 — Ingest ✅ | `sources/`, `models.py`, `validate.py` | Unit tests pass on normal day, DST days, missing-tomorrow, malformed response |
+| 2 — Compute ✅ | `windows.py`, averages | Unit tests incl. edge cases in §6 |
+| 3 — Graph ✅ | `plot.py` producing the PNG from a `DailyBundle` | Visual check of a real day + a forecast-unavailable day |
+| 4 — Email ✅ (code; first real send pending secrets) | `mailer.py`, one manual send | Email received with inline image and attachment |
+| 5 — Automate ✅ (code; first live run pending repo) | `main.py`, `state.py`, workflow, state commit-back | Two consecutive triggers on the same day send exactly one email |
 | 6 — Harden | ENTSO-E fallback, pre-send marker, retry tuning, README | Fault-injection tests (source down, SMTP down) |
 
 ## 13. What you need to do (outside the code)
