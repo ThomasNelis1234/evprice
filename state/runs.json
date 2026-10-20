@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-20T19:55:34+00:00",
+  "updated_at": "2026-10-20T19:57:33+00:00",
   "runs": [
     {
       "run_date": "2026-10-20",
@@ -26,6 +26,17 @@
     {
       "run_date": "2026-10-20",
       "started_at": "2026-10-20T19:55:00+00:00",
+      "status": "failed",
+      "reason": "send failed: email could not be sent after 3 attempts: ssl: Connection unexpectedly closed; starttls: Connection unexpectedly closed",
+      "sent_at": null,
+      "warnings": [],
+      "actual_slots": 0,
+      "forecast_slots": 0,
+      "tomorrow_published": null
+    },
+    {
+      "run_date": "2026-10-20",
+      "started_at": "2026-10-20T19:56:59+00:00",
       "status": "failed",
       "reason": "send failed: email could not be sent after 3 attempts: ssl: Connection unexpectedly closed; starttls: Connection unexpectedly closed",
       "sent_at": null,
