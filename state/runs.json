@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-21T11:23:45+00:00",
+  "updated_at": "2026-10-21T12:00:05+00:00",
   "runs": [
     {
       "run_date": "2026-10-20",
@@ -79,6 +79,17 @@
       "actual_slots": 0,
       "forecast_slots": 0,
       "tomorrow_published": false
+    },
+    {
+      "run_date": "2026-10-21",
+      "started_at": "2026-10-21T11:59:58+00:00",
+      "status": "sent",
+      "reason": "",
+      "sent_at": "2026-10-21T12:00:05+00:00",
+      "warnings": [],
+      "actual_slots": 136,
+      "forecast_slots": 96,
+      "tomorrow_published": true
     }
   ]
 }
