@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-22T11:24:02+00:00",
+  "updated_at": "2026-10-22T11:59:41+00:00",
   "runs": [
     {
       "run_date": "2026-10-20",
@@ -171,6 +171,19 @@
     {
       "run_date": "2026-10-22",
       "started_at": "2026-10-22T11:23:59+00:00",
+      "status": "skipped",
+      "reason": "tomorrow not yet published; will retry",
+      "sent_at": null,
+      "warnings": [
+        "tomorrow's prices not yet published \u2014 recommendation covers today only"
+      ],
+      "actual_slots": 0,
+      "forecast_slots": 0,
+      "tomorrow_published": false
+    },
+    {
+      "run_date": "2026-10-22",
+      "started_at": "2026-10-22T11:59:39+00:00",
       "status": "skipped",
       "reason": "tomorrow not yet published; will retry",
       "sent_at": null,
