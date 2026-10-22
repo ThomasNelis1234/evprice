@@ -64,14 +64,14 @@ class TestRun(Harness):
         self.assertEqual(self.sent, [])
         self.assertEqual(self.go("2026-10-20T18:05", tomorrow_ok=False), Outcome.SENT)
         msg = self.sent[0]
-        self.assertIn("data incomplete", msg["Subject"])
-        self.assertIn("not yet published", msg.get_body(("plain",)).get_content())
+        self.assertIn("gegevens onvolledig", msg["Subject"])
+        self.assertIn("nog niet gepubliceerd", msg.get_body(("plain",)).get_content())
 
     def test_forecast_outage_still_sends(self):
         self.assertEqual(self.go("2026-10-20T14:20", forecast_ok=False), Outcome.SENT)
         body = self.sent[0].get_body(("plain",)).get_content()
-        self.assertIn("forecast unavailable", body)
-        self.assertIn("Best:", body)
+        self.assertIn("niet beschikbaar", body)
+        self.assertIn("Beste:", body)
 
     def test_actual_source_outage_fails_without_sending(self):
         def broken(url, params):
@@ -104,6 +104,9 @@ class TestRun(Harness):
         n = self.at("2026-10-20T14:20")
         self.assertEqual(run(self.cfg, make_fake_fetcher(self.cfg, n), n, dry_run=True, sender=self.sender), Outcome.DRY_RUN)
         self.assertTrue((self.cfg.output_dir / "ev-prices-2026-10-20.png").exists())
+        html = (self.cfg.output_dir / "ev-prices-2026-10-20.html").read_text(encoding="utf-8")
+        self.assertIn('src="ev-prices-2026-10-20.png"', html)   # browser-previewable, no cid: left
+        self.assertNotIn("cid:", html)
         self.assertFalse(self.cfg.state_file.exists())
         self.assertEqual(self.sent, [])
 
@@ -111,11 +114,64 @@ class TestRun(Harness):
         # Run on Sat 24 Oct: tomorrow (25 Oct) has 100 slots. Everything must validate and send.
         self.assertEqual(self.go("2026-10-24T14:20"), Outcome.SENT)
         body = self.sent[0].get_body(("plain",)).get_content()
-        self.assertNotIn("incomplete", body)
+        self.assertNotIn("onvolledig", body)
 
     def test_dst_spring_forward_day(self):
         self.assertEqual(self.go("2026-03-28T14:20"), Outcome.SENT)
-        self.assertNotIn("incomplete", self.sent[0].get_body(("plain",)).get_content())
+        self.assertNotIn("onvolledig", self.sent[0].get_body(("plain",)).get_content())
+
+    def test_email_is_dutch_and_responsive(self):
+        self.go("2026-10-20T14:20")
+        msg = self.sent[0]
+        subject = msg["Subject"]
+        self.assertTrue(subject.startswith("⚡ EV laden:"), subject)
+        self.assertRegex(subject, r"\d\du\d\d–\d\du\d\d")           # Belgian clock notation
+        text = msg.get_body(("plain",)).get_content()
+        self.assertIn("Goedkoopste laadvenster van 4 uur", text)
+        self.assertIn("exclusief taksen en nettarieven", text)
+        self.assertRegex(text, r"gem\. \d+,\d EUR/MWh")             # decimal comma
+        html = msg.get_body(("html",)).get_content()
+        self.assertIn('lang="nl-BE"', html)
+        self.assertIn('name="viewport"', html)
+        self.assertIn("max-width:600px", html)
+        self.assertIn("@media only screen and (max-width:620px)", html)
+        self.assertIn("<!--[if mso]>", html)                         # Outlook fixed-width fallback
+        self.assertIn("cid:", html)
+        for word in ("Goedkoopste laadvenster", "Alternatief", "Gemiddelde vorige 30 dagen",
+                     "Overmorgen", "exclusief taksen en nettarieven"):
+            self.assertIn(word, html)
+        self.assertNotIn("Cheapest", html)
+
+    def test_email_without_forecast_and_windows_still_renders(self):
+        self.go("2026-10-20T14:20", forecast_ok=False)
+        html = self.sent[0].get_body(("html",)).get_content()
+        self.assertIn("niet beschikbaar", html)
+        self.assertIn("Opgelet", html)
+
+
+class TestDutchFormatting(unittest.TestCase):
+    def test_helpers(self):
+        from evprice import nl
+        from datetime import date
+        tz = __import__("zoneinfo").ZoneInfo("Europe/Brussels")
+        t = pd.Timestamp("2026-10-23 11:45", tz=tz)
+        self.assertEqual(nl.day_long(t), "vrijdag 23 oktober")
+        self.assertEqual(nl.day_long(t, year=True), "vrijdag 23 oktober 2026")
+        self.assertEqual(nl.day_short(t), "vr 23 okt")
+        self.assertEqual(nl.clock(t), "11u45")
+        self.assertEqual(nl.num(89.25), "89,2")
+        self.assertEqual(nl.num(89.0, 0), "89")
+        self.assertEqual(nl.relative_day(t, date(2026, 10, 22)), "morgen")
+        self.assertEqual(nl.relative_day(t, date(2026, 10, 23)), "vandaag")
+        self.assertEqual(nl.relative_day(t, date(2026, 10, 21)), "overmorgen")
+        self.assertIsNone(nl.relative_day(t, date(2026, 10, 19)))
+        self.assertEqual(nl.when(t, date(2026, 10, 22)), "morgen, vrijdag 23 oktober")
+        self.assertEqual(nl.when(t, date(2026, 10, 22), short=True), "morgen (vr 23 okt)")
+        self.assertEqual(nl.when(t, date(2026, 10, 1)), "vrijdag 23 oktober")
+        midnight = pd.Timestamp("2026-10-24 00:00", tz=tz)
+        self.assertEqual(nl.clock_end(pd.Timestamp("2026-10-23 20:00", tz=tz), midnight), "24u00")
+        self.assertEqual(nl.clock_end(pd.Timestamp("2026-10-24 00:00", tz=tz),
+                                      pd.Timestamp("2026-10-24 04:00", tz=tz)), "04u00")
 
 
 if __name__ == "__main__":

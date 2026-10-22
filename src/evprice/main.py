@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import re
 import sys
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -60,7 +61,7 @@ def collect(cfg: Config, fetcher: JsonFetcher, now_local: datetime,
         raise ValidationError("no history data returned")
     hist_missing = check_range_complete(history, history_start, local_midnight(today, tz))
     if hist_missing:
-        warnings.append(f"30-day history incomplete ({len(hist_missing)} slots missing)")
+        warnings.append(f"de 30-daagse historiek is onvolledig ({len(hist_missing)} kwartieren ontbreken)")
 
     actual = all_actual.slice(horizon_start, horizon_end - SLOT)
     if actual.empty or actual.start > horizon_start:
@@ -68,15 +69,15 @@ def collect(cfg: Config, fetcher: JsonFetcher, now_local: datetime,
 
     today_missing = check_range_complete(actual, horizon_start, local_midnight(tomorrow, tz))
     if today_missing:
-        warnings.append(f"today's prices have {len(today_missing)} missing slots")
+        warnings.append(f"bij de prijzen van vandaag ontbreken {len(today_missing)} kwartieren")
 
     tomorrow_published = day_is_complete(all_actual, tomorrow, tz)
     if not tomorrow_published:
         n_tom = len(all_actual.slice(local_midnight(tomorrow, tz), horizon_end - SLOT))
         if n_tom:
-            warnings.append(f"tomorrow's prices are incomplete ({n_tom} slots)")
+            warnings.append(f"de prijzen van morgen zijn onvolledig (slechts {n_tom} kwartieren)")
         else:
-            warnings.append("tomorrow's prices not yet published — recommendation covers today only")
+            warnings.append("de prijzen van morgen zijn nog niet gepubliceerd — de aanbeveling geldt enkel voor vandaag")
 
     forecast: ForecastPrices | None = None
     known_until = None
@@ -85,15 +86,15 @@ def collect(cfg: Config, fetcher: JsonFetcher, now_local: datetime,
         if fixture_dir:
             _save_fixture(fixture_dir, f"epex_predictor_{today}.json", raw_fc)
         if forecast.empty:
-            warnings.append("day-after-tomorrow forecast unavailable (no values returned)")
+            warnings.append("voorspelling voor overmorgen niet beschikbaar (geen waarden ontvangen)")
             forecast = None
         else:
             assert_well_formed(forecast)
             if not day_is_complete(forecast, day2, tz):
-                warnings.append("day-after-tomorrow forecast is partial")
+                warnings.append("de voorspelling voor overmorgen is onvolledig")
     except (SourceError, ValidationError) as exc:
         log.warning("forecast unavailable: %s", exc)
-        warnings.append("day-after-tomorrow forecast unavailable")
+        warnings.append("voorspelling voor overmorgen niet beschikbaar")
         forecast = None
 
     return DailyBundle(run_date=today, actual=actual, history=history, forecast=forecast,
@@ -140,7 +141,7 @@ def run(cfg: Config, fetcher: JsonFetcher, now: datetime | None = None, *,
 
     recs = cheapest_windows(bundle.actual, cfg.charging_duration_hours)
     if not recs:
-        bundle.warnings.append("not enough consecutive published slots for the requested charging duration")
+        bundle.warnings.append("te weinig aaneengesloten gepubliceerde kwartieren voor de gevraagde laadduur")
 
     png = render_png(bundle, recs, tz, generated_at=now, horizon_end=day_bounds(today + timedelta(days=2), tz)[1])
     msg = build_message(cfg, bundle, recs, png)
@@ -151,6 +152,9 @@ def run(cfg: Config, fetcher: JsonFetcher, now: datetime | None = None, *,
         (out / f"ev-prices-{today}.png").write_bytes(png)
         (out / f"ev-prices-{today}.eml").write_bytes(bytes(msg))
         (out / f"ev-prices-{today}.txt").write_text(msg.get_body(("plain",)).get_content(), encoding="utf-8")
+        # Browser-previewable copy of the HTML part: the inline chart is swapped for the PNG next to it.
+        html_src = re.sub(r'src="cid:[^"]+"', f'src="ev-prices-{today}.png"', msg.get_body(("html",)).get_content())
+        (out / f"ev-prices-{today}.html").write_text(html_src, encoding="utf-8")
         log.info("dry run: wrote %s", out)
         return Outcome.DRY_RUN
 

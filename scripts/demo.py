@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from evprice.config import load_config  # noqa: E402
 from evprice.http import SourceError  # noqa: E402
 from evprice.main import run  # noqa: E402
-from evprice.timeutil import local_midnight  # noqa: E402
+from evprice.timeutil import SLOT, day_bounds  # noqa: E402
 from synth import energy_charts_payload, predictor_payload  # noqa: E402
 
 
@@ -42,8 +42,8 @@ def make_fake_fetcher(cfg, now_local, *, forecast_ok=True, tomorrow_ok=True):
         if "/prices" in url:
             if not forecast_ok:
                 raise SourceError("simulated forecast outage")
-            known_until = local_midnight(today + timedelta(days=1 if tomorrow_ok else 0), tz) + \
-                pd.Timedelta(hours=23, minutes=45)
+            # last slot of the last published day — computed via day bounds so DST days (23h/25h) are right
+            known_until = day_bounds(today + timedelta(days=1 if tomorrow_ok else 0), tz)[1] - SLOT
             first = pd.Timestamp(now_local).floor("15min")
             return predictor_payload(first, int(params["hours"]), known_until, tz)
         raise SourceError(f"unexpected url {url}")

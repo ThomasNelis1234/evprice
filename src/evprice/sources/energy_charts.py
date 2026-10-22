@@ -21,7 +21,7 @@ from ..models import ActualPrices
 log = logging.getLogger(__name__)
 
 SOURCE_NAME = "energy-charts.info"
-ATTRIBUTION = "Day-ahead prices: Bundesnetzagentur | SMARD.de via energy-charts.info (CC BY 4.0)"
+ATTRIBUTION = "Day-aheadprijzen: Bundesnetzagentur | SMARD.de via energy-charts.info (CC BY 4.0)"
 EXPECTED_UNIT = "EUR / MWh"
 
 

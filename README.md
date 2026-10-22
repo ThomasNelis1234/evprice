@@ -1,6 +1,6 @@
 # EV charging price alert
 
-Once a day, around 13:00 Brussels time, this job emails one PNG and a short recommendation:
+Once a day, around 13:00 Brussels time, this job emails a short Dutch (BE) recommendation with a chart:
 when to charge an EV over the next two days, based on Belgian quarter-hourly day-ahead
 electricity prices. The day after tomorrow is shown as a forecast, clearly marked and never
 used for the recommendation.

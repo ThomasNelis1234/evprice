@@ -26,7 +26,7 @@ from ..timeutil import day_bounds
 log = logging.getLogger(__name__)
 
 SOURCE_NAME = "epexpredictor.batzill.com"
-ATTRIBUTION = "Forecast: EpexPredictor (b3nn0), statistical model — estimates, not market prices"
+ATTRIBUTION = "Voorspelling: EpexPredictor (b3nn0), statistisch model — schattingen, geen marktprijzen"
 
 
 def fetch(fetcher: JsonFetcher, base_url: str, region: str, tz: ZoneInfo, hours: int = 96) -> dict:
