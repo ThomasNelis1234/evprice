@@ -1,0 +1,17 @@
+EV-laadplanner — donderdag 22 oktober 2026
+
+Goedkoopste laadvenster van 4 uur, op basis van gepubliceerde marktprijzen:
+  Beste:       morgen, vrijdag 23 oktober, 11u45 → 15u45   gem. 89,3 EUR/MWh
+               ≈ 40 % goedkoper dan het gemiddelde van de getoonde periode
+  Alternatief: morgen, vrijdag 23 oktober, 20u00 → 24u00   gem. 97,2 EUR/MWh
+
+Gemiddelde van de getoonde periode:  147,8 EUR/MWh
+Gemiddelde van de vorige 30 dagen:   173,9 EUR/MWh
+
+Overmorgen (zaterdag 24 oktober): enkel een voorspelling, gemiddeld 100,9 EUR/MWh — een schatting, geen marktprijs. Wordt niet gebruikt voor de aanbeveling.
+
+Ruwe groothandelsprijzen day-ahead (EUR/MWh, exclusief taksen en nettarieven), Belgische biedzone, opgehaald op donderdag 22 oktober om 18u45 (CEST).
+Day-aheadprijzen: Bundesnetzagentur | SMARD.de via energy-charts.info (CC BY 4.0)
+Voorspelling: EpexPredictor (b3nn0), statistisch model — schattingen, geen marktprijzen
+
+De grafiek zit als PNG bij deze mail.

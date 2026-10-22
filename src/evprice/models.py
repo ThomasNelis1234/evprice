@@ -81,7 +81,9 @@ class Recommendation:
     basis: Literal["actual"] = "actual"
 
     def __str__(self) -> str:
-        return f"{self.start:%a %d %b %H:%M}–{self.end:%H:%M} (avg {self.avg_price:.1f} {UNIT})"
+        from . import nl  # local import: nl is presentation-only, models must stay dependency-free
+        return (f"{nl.day_short(self.start)} {nl.clock(self.start)}–{nl.clock_end(self.start, self.end)} "
+                f"(gem. {nl.num(self.avg_price)} {UNIT})")
 
 
 @dataclass

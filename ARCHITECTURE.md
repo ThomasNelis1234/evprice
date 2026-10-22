@@ -135,9 +135,17 @@ Why a 30-minute cron instead of one 13:00 run: GitHub cron fires in UTC and may 
 
 - Transport: `smtplib` + STARTTLS to `smtp.gmail.com:587`.
 - Auth: `GMAIL_USER` + `GMAIL_APP_PASSWORD` from environment (GitHub Secrets).
-- Content: multipart — plain-text summary, HTML with inline image (CID), PNG also attached.
-- Subject: `EV charging: cheapest 4h window Wed 00:15–04:15 (avg 61 EUR/MWh)` — or `… — data incomplete` when warnings exist.
-- Body: window(s) with start/end/average, period average, 30-day average, basis (actual), warnings.
+- Content: multipart — plain-text summary, responsive HTML with the chart inline (CID), PNG also attached.
+- Language: Dutch (Belgium) throughout — email, chart, warnings. Formatting lives in `nl.py`
+  (lowercase day/month names, `11u45` clock times, decimal comma); no system locale is needed.
+- Subject: `⚡ EV laden: morgen 11u45–15u45 · gem. 89 EUR/MWh (4 u, vr 23 okt)` — key facts first so
+  phones show them uncut; `⚠️ … — gegevens onvolledig` when warnings exist.
+- HTML: 600px-max table layout with inline styles, Outlook fixed-width fallback in `<!--[if mso]>`
+  comments, two stat columns that stack on narrow screens (inline-block + max-width, no media query
+  needed; a media query additionally tightens padding on phones). Icons are emoji — no remote images.
+  Cards: best window (with % saving vs. the period average), alternative, two averages, forecast
+  (clearly marked as an estimate), warnings, chart, source footer.
+- Dry run also writes `ev-prices-<date>.html` (chart path swapped in for the CID) for browser preview.
 
 ## 9. Configuration
 
