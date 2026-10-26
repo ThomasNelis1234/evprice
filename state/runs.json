@@ -1,17 +1,6 @@
 {
-  "updated_at": "2026-10-25T17:52:35+00:00",
+  "updated_at": "2026-10-26T11:31:58+00:00",
   "runs": [
-    {
-      "run_date": "2026-10-20",
-      "started_at": "2026-10-20T19:45:38+00:00",
-      "status": "failed",
-      "reason": "send failed: email could not be sent after 3 attempts: Connection unexpectedly closed",
-      "sent_at": null,
-      "warnings": [],
-      "actual_slots": 0,
-      "forecast_slots": 0,
-      "tomorrow_published": null
-    },
     {
       "run_date": "2026-10-20",
       "started_at": "2026-10-20T19:47:36+00:00",
@@ -687,6 +676,17 @@
       "started_at": "2026-10-25T17:52:35+00:00",
       "status": "skipped",
       "reason": "already sent today",
+      "sent_at": null,
+      "warnings": [],
+      "actual_slots": 0,
+      "forecast_slots": 0,
+      "tomorrow_published": null
+    },
+    {
+      "run_date": "2026-10-26",
+      "started_at": "2026-10-26T11:31:58+00:00",
+      "status": "skipped",
+      "reason": "before earliest send time 13:00",
       "sent_at": null,
       "warnings": [],
       "actual_slots": 0,
