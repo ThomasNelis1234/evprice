@@ -1,17 +1,6 @@
 {
-  "updated_at": "2026-11-01T12:44:35+00:00",
+  "updated_at": "2026-11-01T13:40:01+00:00",
   "runs": [
-    {
-      "run_date": "2026-10-22",
-      "started_at": "2026-10-22T17:02:02+00:00",
-      "status": "skipped",
-      "reason": "already sent today",
-      "sent_at": null,
-      "warnings": [],
-      "actual_slots": 0,
-      "forecast_slots": 0,
-      "tomorrow_published": null
-    },
     {
       "run_date": "2026-10-22",
       "started_at": "2026-10-22T17:56:37+00:00",
@@ -692,6 +681,17 @@
       "actual_slots": 0,
       "forecast_slots": 0,
       "tomorrow_published": false
+    },
+    {
+      "run_date": "2026-11-01",
+      "started_at": "2026-11-01T13:39:57+00:00",
+      "status": "sent",
+      "reason": "",
+      "sent_at": "2026-11-01T13:40:01+00:00",
+      "warnings": [],
+      "actual_slots": 136,
+      "forecast_slots": 96,
+      "tomorrow_published": true
     }
   ]
 }
