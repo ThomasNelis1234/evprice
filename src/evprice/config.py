@@ -61,7 +61,11 @@ class CostStackConfig:
     flemish_energy_fund_c_per_kwh: float
     distribution_operator: str
     distribution_c_per_kwh: float
-    capacity_surcharge_c_per_kwh: float = 0.0
+    capacity_surcharge_c_per_kwh: float = 0.0   # derived from the capacity_* fields unless set explicitly
+    capacity_tariff_eur_per_kw_year: float | None = None
+    capacity_extra_peak_kw: float | None = None
+    capacity_kwh_per_year: float | None = None
+    charger_power_kw: float | None = None
     vat: float = 0.06
     source: str = ""
 
@@ -170,6 +174,29 @@ def _parse_cost_stack(raw: dict | None) -> CostStackConfig | None:
     vat = num("vat", 0.06)
     if not 0 <= vat < 1:
         raise ConfigError("cost_stack.vat must be a fraction, e.g. 0.06")
+
+    # Capacity tariff: explicit per-kWh figure wins; otherwise derive it from tariff × extra peak ÷ kWh.
+    cap = raw.get("capacity") or {}
+    cap_tariff = cap_peak = cap_kwh = charger = None
+    if isinstance(cap, dict) and cap:
+        table = cap.get("tariff_eur_per_kw_year")
+        if isinstance(table, dict):
+            if operator not in table:
+                raise ConfigError(f"cost_stack.capacity.tariff_eur_per_kw_year has no entry for {operator!r}")
+            cap_tariff = float(table[operator])
+        elif table is not None:
+            cap_tariff = float(table)
+        cap_peak = float(cap.get("extra_peak_kw", 0.0))
+        cap_kwh = float(cap.get("kwh_per_year", 0.0)) or None
+        charger = float(cap["charger_power_kw"]) if cap.get("charger_power_kw") is not None else None
+        if cap_peak < 0 or (cap_kwh is not None and cap_kwh <= 0):
+            raise ConfigError("cost_stack.capacity: extra_peak_kw must be >= 0 and kwh_per_year > 0")
+    if "capacity_surcharge_c_per_kwh" in raw:
+        surcharge = num("capacity_surcharge_c_per_kwh", 0.0)
+    elif cap_tariff is not None and cap_peak and cap_kwh:
+        surcharge = cap_tariff * cap_peak / cap_kwh * 100
+    else:
+        surcharge = 0.0
     return CostStackConfig(
         energy_a=num("energy_a"),
         energy_b=num("energy_b"),
@@ -179,7 +206,11 @@ def _parse_cost_stack(raw: dict | None) -> CostStackConfig | None:
         flemish_energy_fund_c_per_kwh=num("flemish_energy_fund_c_per_kwh", 0.0),
         distribution_operator=operator or "distributienet",
         distribution_c_per_kwh=distribution,
-        capacity_surcharge_c_per_kwh=num("capacity_surcharge_c_per_kwh", 0.0),
+        capacity_surcharge_c_per_kwh=surcharge,
+        capacity_tariff_eur_per_kw_year=cap_tariff,
+        capacity_extra_peak_kw=cap_peak,
+        capacity_kwh_per_year=cap_kwh,
+        charger_power_kw=charger,
         vat=vat,
         source=str(raw.get("source", "")),
     )

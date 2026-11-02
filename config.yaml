@@ -48,7 +48,7 @@ cost_stack:
   green_option_c_per_kwh: 0.0      # "Optie groene stroom" is 1.060 — set it if you took that option
   federal_excise_c_per_kwh: 4.4732 # Federale accijns, alle verbruiken
   flemish_energy_fund_c_per_kwh: 0.0   # Bijdrage Energiefonds: 0 for a residential customer with domicile
-  distribution_operator: FLUVIUS ANTWERPEN   # pick your Fluvius zone from the table below
+  distribution_operator: FLUVIUS LIMBURG     # pick your Fluvius zone from the tables below
   distribution_c_per_kwh:          # "Totaal kWh-tarief" digitale meter, distributie incl. transmissie, 2026
     FLUVIUS ANTWERPEN: 5.35329
     FLUVIUS HALLE-VILVOORDE: 5.63676
@@ -58,9 +58,22 @@ cost_stack:
     FLUVIUS MIDDEN-VLAANDEREN: 5.27945
     FLUVIUS WEST: 6.69853
     FLUVIUS ZENNE-DIJLE: 5.87156
-  # Optional allowance for the capaciteitstarief (€/kW/year × extra monthly peak ÷ kWh charged).
-  # 0 = treat the peak tariff as sunk. Example: +4 kW peak × 52 €/kW/j ÷ 3 000 kWh/j ≈ 6.9 c€/kWh.
-  capacity_surcharge_c_per_kwh: 0.0
+  # Capaciteitstarief: the part of the monthly peak that charging causes, spread over the kWh charged.
+  # surcharge (c€/kWh) = tariff (€/kW/year, from the sheet, incl. btw) × extra_peak_kw ÷ kwh_per_year × 100.
+  # Set extra_peak_kw to 0 to treat the peak as sunk. A fixed capacity_surcharge_c_per_kwh overrides the formula.
+  capacity:
+    charger_power_kw: 4.6          # the car is limited to this charging power (informational, shown in the email)
+    extra_peak_kw: 2.5             # household ≈ 3 kW on its own, ≈ 5.5 kW while charging
+    kwh_per_year: 4000             # kWh charged at home per year
+    tariff_eur_per_kw_year:        # "Capaciteitstarief gemiddelde maandpiek", 2026, incl. btw
+      FLUVIUS ANTWERPEN: 52.3679
+      FLUVIUS HALLE-VILVOORDE: 59.4055
+      FLUVIUS IMEWO: 57.4530
+      FLUVIUS KEMPEN: 59.5794
+      FLUVIUS LIMBURG: 51.9898
+      FLUVIUS MIDDEN-VLAANDEREN: 53.1314
+      FLUVIUS WEST: 60.5255
+      FLUVIUS ZENNE-DIJLE: 59.4902
   vat: 0.06
 
 http:

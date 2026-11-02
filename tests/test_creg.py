@@ -122,8 +122,26 @@ class TestConfig(unittest.TestCase):
         cfg = load_config(ROOT / "config.yaml", env={})
         self.assertIsNotNone(cfg.creg)
         self.assertIsNotNone(cfg.cost_stack)
-        self.assertEqual(cfg.cost_stack.distribution_operator, "FLUVIUS ANTWERPEN")
-        self.assertAlmostEqual(cfg.cost_stack.distribution_c_per_kwh, 5.35329)
+        self.assertEqual(cfg.cost_stack.distribution_operator, "FLUVIUS LIMBURG")
+        self.assertAlmostEqual(cfg.cost_stack.distribution_c_per_kwh, 5.75257)
+        # capacity share derived from the sheet: 51.9898 €/kW/j × 2.5 kW ÷ 4000 kWh = 3.249 c€/kWh
+        self.assertAlmostEqual(cfg.cost_stack.capacity_surcharge_c_per_kwh, 51.9898 * 2.5 / 4000 * 100, places=9)
+        self.assertEqual(cfg.cost_stack.charger_power_kw, 4.6)
+        self.assertAlmostEqual(CostStack(cfg.cost_stack).break_even(32.25), 149.2, delta=0.1)
+
+    def test_capacity_overrides_and_zero_peak(self):
+        import tempfile
+        import yaml
+        raw = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
+        raw["cost_stack"]["capacity"]["extra_peak_kw"] = 0
+        with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
+            yaml.safe_dump(raw, f)
+        self.assertEqual(load_config(f.name, env={}).cost_stack.capacity_surcharge_c_per_kwh, 0.0)
+        raw["cost_stack"]["capacity_surcharge_c_per_kwh"] = 1.5     # explicit value wins over the formula
+        raw["cost_stack"]["capacity"]["extra_peak_kw"] = 2.5
+        with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
+            yaml.safe_dump(raw, f)
+        self.assertEqual(load_config(f.name, env={}).cost_stack.capacity_surcharge_c_per_kwh, 1.5)
 
     def test_unknown_operator_is_rejected(self):
         import tempfile

@@ -159,8 +159,10 @@ Why a 30-minute cron instead of one 13:00 run: GitHub cron fires in UTC and may 
   `all_in(P) = (a + b·P)·(1+btw) + GSC/WKK + green option + Fluvius kWh-tarief + federale accijns +
   energiefonds + optional capacity surcharge`. Inverting gives the **break-even day-ahead price**,
   drawn as a purple line on the chart (it replaces the period-average line; that average stays in the
-  stat tiles). Fixed yearly amounts and the capaciteitstarief are deliberately excluded — they do not
-  depend on *when* you charge — and the email says so.
+  stat tiles). Fixed yearly amounts are excluded — they do not depend on *when* you charge. The
+  capaciteitstarief is included as the share charging causes: `tariff (€/kW/j) × extra_peak_kw ÷
+  kwh_per_year` (config `cost_stack.capacity`; extra_peak_kw 0 = treat as sunk). The email states the
+  resulting c€/kWh and the configured charging-power cap.
 - Email: hero pill shows all-in c€/kWh and the margin vs CREG (green under, red over); a CREG card
   lists cost and margin for the best window, the alternative and the period average; the subject
   carries `· N c onder/boven CREG`.
