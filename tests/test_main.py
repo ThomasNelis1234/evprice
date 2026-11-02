@@ -158,7 +158,9 @@ class TestRun(Harness):
         self.assertIn("Break-even day-aheadprijs", text)
         html = msg.get_body(("html",)).get_content()
         self.assertIn("CREG-tarief Q4 2026", html)
-        self.assertIn("182 EUR/MWh", html)
+        self.assertIn("149 EUR/MWh", html)
+        self.assertIn("capaciteitstarief", html)
+        self.assertIn("4,6 kW", html)
         self.assertNotIn("goedkoper dan het gemiddelde", html)   # the pill now compares with CREG
         self.assertNotIn("controleer config.yaml", html)         # sample CSV agrees with config
 

@@ -134,7 +134,13 @@ def body_text(bundle: DailyBundle, recs: list[Recommendation], tz) -> str:
         for w in c.windows:
             lines.append(f"  {w.label:<28} {nl.num(w.spot_eur_mwh):>6} {UNIT} → "
                          f"{nl.num(w.all_in_c_per_kwh):>5} c€/kWh all-in, {_margin_txt(w.margin_c_per_kwh)}")
-        lines.append("Het capaciteitstarief (maandpiek) zit hier niet in; laad traag genoeg om je piek niet op te drijven.")
+        st = c.stack.cfg
+        if st.capacity_surcharge_c_per_kwh > 0:
+            lines.append(f"Inclusief ≈ {nl.num(st.capacity_surcharge_c_per_kwh)} c€/kWh capaciteitstarief "
+                         f"(+{nl.num(st.capacity_extra_peak_kw or 0)} kW maandpiek door het laden"
+                         + (f", laden begrensd op {nl.num(st.charger_power_kw)} kW" if st.charger_power_kw else "") + ").")
+        else:
+            lines.append("Het capaciteitstarief (maandpiek) zit hier niet in; laad traag genoeg om je piek niet op te drijven.")
         lines.append("")
     if bundle.forecast is not None and not bundle.forecast.empty:
         f = bundle.forecast
@@ -301,6 +307,20 @@ def _creg(bundle: DailyBundle) -> str:
             f'</tr>'
         )
     stack = c.stack.cfg
+    if stack.capacity_surcharge_c_per_kwh > 0:
+        if stack.capacity_tariff_eur_per_kw_year and stack.capacity_extra_peak_kw and stack.capacity_kwh_per_year:
+            kwh_year = f"{stack.capacity_kwh_per_year:,.0f}".replace(",", "\u202f")   # 4 000
+            cap_txt = (f'Daarin zit ≈ {_e(nl.num(stack.capacity_surcharge_c_per_kwh))} c€/kWh capaciteitstarief: '
+                       f'+{_e(nl.num(stack.capacity_extra_peak_kw))} kW maandpiek door het laden × '
+                       f'{_e(nl.num(stack.capacity_tariff_eur_per_kw_year, 2))} €/kW/jaar, gespreid over '
+                       f'{kwh_year} kWh/jaar')
+        else:
+            cap_txt = f'Daarin zit ≈ {_e(nl.num(stack.capacity_surcharge_c_per_kwh))} c€/kWh capaciteitstarief'
+        if stack.charger_power_kw:
+            cap_txt += f' (laden begrensd op {_e(nl.num(stack.charger_power_kw))} kW)'
+        cap_txt += '. '
+    else:
+        cap_txt = 'Het capaciteitstarief (maandpiek) zit er niet in — laad traag genoeg om je piek niet op te drijven. '
     inner = (
         _label("🏷️", f"CREG-tarief {c.quarter_label()} · {t.region}", C["purple"]) +
         f'<div style="font-size:15px;line-height:22px;margin-top:6px;">'
@@ -315,9 +335,9 @@ def _creg(bundle: DailyBundle) -> str:
         f'{rows}</table>'
         f'<div style="font-size:12px;line-height:18px;color:{C["muted"]};margin-top:10px;">'
         f'Kost per kWh = ENGIE-formule ({_e(nl.num(stack.energy_a, 4))} + {_e(nl.num(stack.energy_b, 4))} × spot, excl. btw) + '
-        f'{_e(nl.num(c.stack.fixed_incl_vat, 2))} c€/kWh nettarief ({_e(stack.distribution_operator.title())}), accijns en groenestroombijdragen, incl. 6 % btw. '
-        f'Vaste kosten en het capaciteitstarief (maandpiek) zitten er niet in — laad traag genoeg om je piek niet op te drijven. '
-        f'Het CREG-tarief loopt 3 tot 8 maanden achter op de markt.</div>'
+        f'{_e(nl.num(c.stack.fixed_incl_vat, 2))} c€/kWh nettarief ({_e(stack.distribution_operator.title())}), accijns, '
+        f'groenestroombijdragen en capaciteitstarief, incl. 6 % btw. {cap_txt}'
+        f'Vaste jaarkosten tellen niet mee. Het CREG-tarief loopt 3 tot 8 maanden achter op de markt.</div>'
     )
     return _card(inner, bg=C["purple_bg"], accent=C["purple"])
 

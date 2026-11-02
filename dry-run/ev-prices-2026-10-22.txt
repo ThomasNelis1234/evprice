@@ -2,22 +2,22 @@ EV-laadplanner — donderdag 22 oktober 2026
 
 Goedkoopste laadvenster van 4 uur, op basis van gepubliceerde marktprijzen:
   Beste:       morgen, vrijdag 23 oktober, 11u45 → 15u45   gem. 89,3 EUR/MWh
-               ≈ 22,0 c€/kWh all-in, 10,2 c€/kWh onder het CREG-tarief
+               ≈ 25,7 c€/kWh all-in, 6,6 c€/kWh onder het CREG-tarief
   Alternatief: morgen, vrijdag 23 oktober, 20u00 → 24u00   gem. 97,2 EUR/MWh
 
 Gemiddelde van de getoonde periode:  147,8 EUR/MWh
 Gemiddelde van de vorige 30 dagen:   173,9 EUR/MWh
 
 CREG-tarief Q4 2026 Vlaanderen: 32,25 c€/kWh all-in (gebaseerd op mei–juli 2026).
-Break-even day-aheadprijs met jouw kostenstructuur: 182 EUR/MWh — daarboven kost laden meer dan je terugkrijgt.
-  beste venster                  89,3 EUR/MWh →  22,0 c€/kWh all-in, 10,2 c€/kWh onder het CREG-tarief
-  alternatief                    97,2 EUR/MWh →  22,9 c€/kWh all-in, 9,4 c€/kWh onder het CREG-tarief
-  gemiddelde getoonde periode   147,8 EUR/MWh →  28,4 c€/kWh all-in, 3,8 c€/kWh onder het CREG-tarief
-Het capaciteitstarief (maandpiek) zit hier niet in; laad traag genoeg om je piek niet op te drijven.
+Break-even day-aheadprijs met jouw kostenstructuur: 149 EUR/MWh — daarboven kost laden meer dan je terugkrijgt.
+  beste venster                  89,3 EUR/MWh →  25,7 c€/kWh all-in, 6,6 c€/kWh onder het CREG-tarief
+  alternatief                    97,2 EUR/MWh →  26,5 c€/kWh all-in, 5,7 c€/kWh onder het CREG-tarief
+  gemiddelde getoonde periode   147,8 EUR/MWh →  32,1 c€/kWh all-in, 0,2 c€/kWh onder het CREG-tarief
+Inclusief ≈ 3,2 c€/kWh capaciteitstarief (+2,5 kW maandpiek door het laden, laden begrensd op 4,6 kW).
 
 Overmorgen (zaterdag 24 oktober): enkel een voorspelling, gemiddeld 92,6 EUR/MWh — een schatting, geen marktprijs. Wordt niet gebruikt voor de aanbeveling.
 
-Ruwe groothandelsprijzen day-ahead (EUR/MWh, exclusief taksen en nettarieven), Belgische biedzone, opgehaald op maandag 2 november om 11u21 (CET).
+Ruwe groothandelsprijzen day-ahead (EUR/MWh, exclusief taksen en nettarieven), Belgische biedzone, opgehaald op maandag 2 november om 14u06 (CET).
 Day-aheadprijzen: Bundesnetzagentur | SMARD.de via energy-charts.info (CC BY 4.0)
 Voorspelling: EpexPredictor (b3nn0), statistisch model — schattingen, geen marktprijzen
 
