@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from datetime import time
+from datetime import date, time
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -39,6 +39,34 @@ class Secrets:
 
 
 @dataclass(frozen=True)
+class CregConfig:
+    """The quarterly CREG reimbursement tariff as configured (all-in, incl. btw, c€/kWh)."""
+    region: str
+    tariff_c_per_kwh: float
+    valid_from: date
+    valid_to: date
+    based_on: str = ""
+    csv_url: str = "https://www.creg.be/sites/default/files/assets/Prices/CREG_Tariff_EV.csv"
+    check_online: bool = True
+
+
+@dataclass(frozen=True)
+class CostStackConfig:
+    """Per-kWh costs on top of the day-ahead price. c€/kWh, incl. btw unless the name says otherwise."""
+    energy_a: float                      # c€/kWh excl. btw, fixed part of the supplier formula
+    energy_b: float                      # multiplier on the day-ahead price in EUR/MWh (0.1 = pass-through)
+    gsc_wkk_c_per_kwh: float
+    green_option_c_per_kwh: float
+    federal_excise_c_per_kwh: float
+    flemish_energy_fund_c_per_kwh: float
+    distribution_operator: str
+    distribution_c_per_kwh: float
+    capacity_surcharge_c_per_kwh: float = 0.0
+    vat: float = 0.06
+    source: str = ""
+
+
+@dataclass(frozen=True)
 class Config:
     bidding_zone: str
     timezone: str
@@ -55,6 +83,8 @@ class Config:
     secrets: Secrets = field(default_factory=Secrets)
     state_file: Path = Path("state/runs.json")
     output_dir: Path = Path("out")
+    creg: CregConfig | None = None
+    cost_stack: CostStackConfig | None = None
 
     @property
     def tz(self) -> ZoneInfo:
@@ -80,6 +110,79 @@ def _parse_recipients(raw: dict) -> tuple[str, ...]:
         if "@" not in r:
             raise ConfigError(f"invalid recipient address: {r!r}")
     return recipients
+
+
+def _parse_date(value, name: str) -> date:
+    if isinstance(value, date):
+        return value
+    try:
+        return date.fromisoformat(str(value))
+    except Exception as exc:  # noqa: BLE001
+        raise ConfigError(f"{name} must be YYYY-MM-DD, got {value!r}") from exc
+
+
+def _parse_creg(raw: dict | None) -> CregConfig | None:
+    if not raw:
+        return None
+    try:
+        tariff = float(raw["tariff_c_per_kwh"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ConfigError("creg.tariff_c_per_kwh must be a number (c€/kWh)") from exc
+    if not 5 < tariff < 100:
+        raise ConfigError(f"creg.tariff_c_per_kwh looks wrong: {tariff} (expected c€/kWh, e.g. 32.25)")
+    valid_from = _parse_date(raw.get("valid_from"), "creg.valid_from")
+    valid_to = _parse_date(raw.get("valid_to"), "creg.valid_to")
+    if valid_to < valid_from:
+        raise ConfigError("creg.valid_to is before creg.valid_from")
+    return CregConfig(
+        region=str(raw.get("region", "Vlaanderen")),
+        tariff_c_per_kwh=tariff,
+        valid_from=valid_from,
+        valid_to=valid_to,
+        based_on=str(raw.get("based_on", "")),
+        csv_url=str(raw.get("csv_url", CregConfig.csv_url)),
+        check_online=bool(raw.get("check_online", True)),
+    )
+
+
+def _parse_cost_stack(raw: dict | None) -> CostStackConfig | None:
+    if not raw:
+        return None
+
+    def num(key: str, default: float | None = None) -> float:
+        value = raw.get(key, default)
+        if value is None:
+            raise ConfigError(f"cost_stack.{key} is required")
+        try:
+            return float(value)
+        except (TypeError, ValueError) as exc:
+            raise ConfigError(f"cost_stack.{key} must be a number, got {value!r}") from exc
+
+    table = raw.get("distribution_c_per_kwh")
+    operator = str(raw.get("distribution_operator", "")).strip()
+    if isinstance(table, dict):
+        if operator not in table:
+            raise ConfigError(f"cost_stack.distribution_operator {operator!r} is not in distribution_c_per_kwh "
+                              f"(choose one of: {', '.join(table)})")
+        distribution = float(table[operator])
+    else:
+        distribution = num("distribution_c_per_kwh")
+    vat = num("vat", 0.06)
+    if not 0 <= vat < 1:
+        raise ConfigError("cost_stack.vat must be a fraction, e.g. 0.06")
+    return CostStackConfig(
+        energy_a=num("energy_a"),
+        energy_b=num("energy_b"),
+        gsc_wkk_c_per_kwh=num("gsc_wkk_c_per_kwh", 0.0),
+        green_option_c_per_kwh=num("green_option_c_per_kwh", 0.0),
+        federal_excise_c_per_kwh=num("federal_excise_c_per_kwh", 0.0),
+        flemish_energy_fund_c_per_kwh=num("flemish_energy_fund_c_per_kwh", 0.0),
+        distribution_operator=operator or "distributienet",
+        distribution_c_per_kwh=distribution,
+        capacity_surcharge_c_per_kwh=num("capacity_surcharge_c_per_kwh", 0.0),
+        vat=vat,
+        source=str(raw.get("source", "")),
+    )
 
 
 def load_config(path: str | Path = "config.yaml", env: dict | None = None) -> Config:
@@ -118,4 +221,6 @@ def load_config(path: str | Path = "config.yaml", env: dict | None = None) -> Co
         ),
         state_file=Path(raw.get("state_file", "state/runs.json")),
         output_dir=Path(raw.get("output_dir", "out")),
+        creg=_parse_creg(raw.get("creg")),
+        cost_stack=_parse_cost_stack(raw.get("cost_stack")),
     )

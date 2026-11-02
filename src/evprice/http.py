@@ -18,6 +18,27 @@ class SourceError(Exception):
 
 
 JsonFetcher = Callable[[str, dict[str, Any]], Any]
+TextFetcher = Callable[[str], str]
+
+
+def make_text_fetcher(http: HttpConfig, session: requests.Session | None = None) -> TextFetcher:
+    """Return ``fetch(url) -> str`` for small text files (e.g. CREG's CSV). One attempt, no retries:
+    the callers treat a failure as "could not check", never as a reason to block the email."""
+    session = session or requests.Session()
+    session.headers.setdefault("User-Agent", "evprice/0.1 (+https://github.com/)")
+
+    def fetch(url: str) -> str:
+        try:
+            resp = session.get(url, timeout=http.timeout_seconds)
+        except requests.RequestException as exc:
+            raise SourceError(f"{url}: {exc}") from exc
+        if resp.status_code >= 400:
+            raise SourceError(f"{url} returned HTTP {resp.status_code}")
+        if not resp.encoding or resp.encoding.lower() == "iso-8859-1":
+            resp.encoding = resp.apparent_encoding or "utf-8"
+        return resp.text
+
+    return fetch
 
 
 def make_fetcher(http: HttpConfig, session: requests.Session | None = None, sleep=time.sleep) -> JsonFetcher:

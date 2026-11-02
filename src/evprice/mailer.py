@@ -44,6 +44,10 @@ C = {
     "orange_bg": "#fdeee6",
     "amber": "#d9930d",
     "amber_bg": "#fdf3dc",
+    "red": "#c8362b",
+    "red_bg": "#fbe7e4",
+    "purple": "#7a3fb8",
+    "purple_bg": "#f1eaf9",
     "grey_bg": "#f6f6f3",
 }
 FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
@@ -72,12 +76,21 @@ def _fetched_txt(bundle: DailyBundle, tz) -> str:
     return f"{nl.day_long(f)} om {nl.clock(f)} ({f:%Z})"
 
 
+def _margin_txt(margin: float, short: bool = False) -> str:
+    """'10,3 c€/kWh onder het CREG-tarief' / short: '10 c onder CREG'."""
+    side = "onder" if margin >= 0 else "boven"
+    if short:
+        return f"{abs(margin):.0f} c {side} CREG"
+    return f"{nl.num(abs(margin))} c€/kWh {side} het CREG-tarief"
+
+
 def headline(bundle: DailyBundle, recs: list[Recommendation]) -> str:
     """Subject without the leading icon; the key facts come first so phones show them uncut."""
     if recs:
         r = recs[0]
         rel = nl.relative_day(r.start, bundle.run_date) or nl.day_short(r.start)
-        core = (f"EV laden: {rel} {span(r, '–')} · gem. {r.avg_price:.0f} {UNIT} "
+        creg = f" · {_margin_txt(bundle.creg.best.margin_c_per_kwh, short=True)}" if bundle.creg and bundle.creg.best else ""
+        core = (f"EV laden: {rel} {span(r, '–')} · gem. {r.avg_price:.0f} {UNIT}{creg} "
                 f"({r.duration_hours} u, {nl.day_short(r.start)})")
     else:
         core = "EV laden: geen laadvenster kon aanbevolen worden"
@@ -96,9 +109,14 @@ def body_text(bundle: DailyBundle, recs: list[Recommendation], tz) -> str:
         best = recs[0]
         lines.append(f"Goedkoopste laadvenster van {best.duration_hours} uur, op basis van gepubliceerde marktprijzen:")
         lines.append(f"  Beste:       {nl.when(best.start, today)}, {span(best)}   gem. {nl.num(best.avg_price)} {UNIT}")
-        pct = _savings_pct(best.avg_price, bundle.period_average)
-        if pct:
-            lines.append(f"               ≈ {pct} % goedkoper dan het gemiddelde van de getoonde periode")
+        if bundle.creg and bundle.creg.best:
+            w = bundle.creg.best
+            lines.append(f"               ≈ {nl.num(w.all_in_c_per_kwh)} c€/kWh all-in, "
+                         f"{_margin_txt(w.margin_c_per_kwh)}")
+        else:
+            pct = _savings_pct(best.avg_price, bundle.period_average)
+            if pct:
+                lines.append(f"               ≈ {pct} % goedkoper dan het gemiddelde van de getoonde periode")
         for r in recs[1:]:
             lines.append(f"  Alternatief: {nl.when(r.start, today)}, {span(r)}   gem. {nl.num(r.avg_price)} {UNIT}")
     else:
@@ -107,6 +125,17 @@ def body_text(bundle: DailyBundle, recs: list[Recommendation], tz) -> str:
     lines.append(f"Gemiddelde van de getoonde periode:  {nl.num(bundle.period_average)} {UNIT}")
     lines.append(f"Gemiddelde van de vorige 30 dagen:   {nl.num(bundle.history_average)} {UNIT}")
     lines.append("")
+    if bundle.creg:
+        c = bundle.creg
+        lines.append(f"CREG-tarief {c.quarter_label()} {c.tariff.region}: {nl.num(c.tariff_c, 2)} c€/kWh all-in"
+                     + (f" (gebaseerd op {c.tariff.based_on})" if c.tariff.based_on else "") + ".")
+        lines.append(f"Break-even day-aheadprijs met jouw kostenstructuur: {c.break_even_eur_mwh:.0f} {UNIT} — "
+                     "daarboven kost laden meer dan je terugkrijgt.")
+        for w in c.windows:
+            lines.append(f"  {w.label:<28} {nl.num(w.spot_eur_mwh):>6} {UNIT} → "
+                         f"{nl.num(w.all_in_c_per_kwh):>5} c€/kWh all-in, {_margin_txt(w.margin_c_per_kwh)}")
+        lines.append("Het capaciteitstarief (maandpiek) zit hier niet in; laad traag genoeg om je piek niet op te drijven.")
+        lines.append("")
     if bundle.forecast is not None and not bundle.forecast.empty:
         f = bundle.forecast
         lines.append(f"Overmorgen ({nl.day_long(f.start)}): enkel een voorspelling, gemiddeld "
@@ -194,12 +223,20 @@ def _hero(bundle: DailyBundle, recs: list[Recommendation]) -> str:
         return _card(inner, bg=C["amber_bg"], accent=C["amber"])
 
     best = recs[0]
-    pct = _savings_pct(best.avg_price, bundle.period_average)
     pill = ""
-    if pct:
+    if bundle.creg and bundle.creg.best:
+        w = bundle.creg.best
+        good = w.margin_c_per_kwh >= 0
         pill = (f'<span style="display:inline-block;margin-top:10px;padding:4px 10px;border-radius:999px;'
-                f'background-color:{C["green"]};color:#ffffff;font-size:12px;line-height:16px;font-weight:700;">'
-                f'↓ ≈ {pct}&nbsp;% goedkoper dan het gemiddelde van de periode</span>')
+                f'background-color:{C["green"] if good else C["red"]};color:#ffffff;font-size:12px;line-height:16px;'
+                f'font-weight:700;">{"↓" if good else "↑"} ≈ {_e(nl.num(w.all_in_c_per_kwh))}&nbsp;c€/kWh all-in · '
+                f'{_e(_margin_txt(w.margin_c_per_kwh))}</span>')
+    else:
+        pct = _savings_pct(best.avg_price, bundle.period_average)
+        if pct:
+            pill = (f'<span style="display:inline-block;margin-top:10px;padding:4px 10px;border-radius:999px;'
+                    f'background-color:{C["green"]};color:#ffffff;font-size:12px;line-height:16px;font-weight:700;">'
+                    f'↓ ≈ {pct}&nbsp;% goedkoper dan het gemiddelde van de periode</span>')
     inner = (
         _label("⚡", f"Goedkoopste laadvenster · {best.duration_hours} u", C["green_dark"]) +
         f'<div style="font-size:16px;line-height:24px;color:{C["muted"]};margin-top:8px;">'
@@ -243,6 +280,48 @@ def _stats(bundle: DailyBundle) -> str:
             + mso_open + mso_between.join(cols) + mso_close + '</div>')
 
 
+def _creg(bundle: DailyBundle) -> str:
+    c = bundle.creg
+    if c is None:
+        return ""
+    t = c.tariff
+    based = f" · op basis van {_e(t.based_on)}" if t.based_on else ""
+    rows = ""
+    for w in c.windows:
+        good = w.margin_c_per_kwh >= 0
+        color = C["green_dark"] if good else C["red"]
+        rows += (
+            f'<tr>'
+            f'<td style="padding:6px 0;border-top:1px solid {C["line"]};font-size:14px;line-height:20px;color:{C["muted"]};">'
+            f'{_e(w.label.capitalize())}<br><span style="font-size:12px;">{_e(nl.num(w.spot_eur_mwh))} {UNIT}</span></td>'
+            f'<td align="right" style="padding:6px 0 6px 8px;border-top:1px solid {C["line"]};font-size:15px;line-height:20px;'
+            f'white-space:nowrap;"><strong>{_e(nl.num(w.all_in_c_per_kwh))}</strong> <span style="font-size:12px;color:{C["muted"]};">c€/kWh</span></td>'
+            f'<td align="right" style="padding:6px 0 6px 12px;border-top:1px solid {C["line"]};font-size:14px;line-height:20px;'
+            f'font-weight:700;color:{color};white-space:nowrap;">{"−" if good else "+"}{_e(nl.num(abs(w.margin_c_per_kwh)))}</td>'
+            f'</tr>'
+        )
+    stack = c.stack.cfg
+    inner = (
+        _label("🏷️", f"CREG-tarief {c.quarter_label()} · {t.region}", C["purple"]) +
+        f'<div style="font-size:15px;line-height:22px;margin-top:6px;">'
+        f'Je werkgever betaalt maximaal <strong>{_e(nl.num(c.tariff_c, 2))}&nbsp;c€/kWh</strong> terug (all-in{based}). '
+        f'Met jouw dynamisch contract is dat gelijk aan een day-aheadprijs van '
+        f'<strong style="color:{C["purple"]};white-space:nowrap;">≈ {c.break_even_eur_mwh:.0f} {UNIT}</strong> — '
+        f'de paarse lijn op de grafiek. Daaronder hou je geld over, daarboven leg je bij.</div>'
+        f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:10px;font-family:{FONT};">'
+        f'<tr><td style="font-size:11px;line-height:16px;color:{C["faint"]};text-transform:uppercase;letter-spacing:0.5px;">Venster</td>'
+        f'<td align="right" style="padding-left:8px;font-size:11px;line-height:16px;color:{C["faint"]};text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap;">Jouw kost</td>'
+        f'<td align="right" style="padding-left:12px;font-size:11px;line-height:16px;color:{C["faint"]};text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap;">vs CREG</td></tr>'
+        f'{rows}</table>'
+        f'<div style="font-size:12px;line-height:18px;color:{C["muted"]};margin-top:10px;">'
+        f'Kost per kWh = ENGIE-formule ({_e(nl.num(stack.energy_a, 4))} + {_e(nl.num(stack.energy_b, 4))} × spot, excl. btw) + '
+        f'{_e(nl.num(c.stack.fixed_incl_vat, 2))} c€/kWh nettarief ({_e(stack.distribution_operator.title())}), accijns en groenestroombijdragen, incl. 6 % btw. '
+        f'Vaste kosten en het capaciteitstarief (maandpiek) zitten er niet in — laad traag genoeg om je piek niet op te drijven. '
+        f'Het CREG-tarief loopt 3 tot 8 maanden achter op de markt.</div>'
+    )
+    return _card(inner, bg=C["purple_bg"], accent=C["purple"])
+
+
 def _forecast(bundle: DailyBundle) -> str:
     if bundle.forecast is not None and not bundle.forecast.empty:
         f = bundle.forecast
@@ -268,7 +347,8 @@ def _warnings(bundle: DailyBundle) -> str:
     return _card(inner, bg=C["amber_bg"], accent=C["amber"])
 
 
-def _chart(cid: str, alt: str) -> str:
+def _chart(cid: str, alt: str, with_creg: bool) -> str:
+    creg_txt = "paars = break-even t.o.v. het CREG-tarief, " if with_creg else ""
     return (
         f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
         f'style="border-collapse:separate;border-radius:12px;background-color:{C["card"]};" bgcolor="{C["card"]}">'
@@ -277,7 +357,7 @@ def _chart(cid: str, alt: str) -> str:
         f'style="display:block;width:100%;max-width:532px;height:auto;border:0;border-radius:8px;">'
         f'</td></tr>'
         f'<tr><td style="padding:0 12px 12px;font-family:{FONT};font-size:12px;line-height:18px;color:{C["faint"]};">'
-        f'Blauw = gepubliceerde prijzen, groen = aanbevolen venster(s), oranje = voorspelling. '
+        f'Blauw = gepubliceerde prijzen, groen = aanbevolen venster(s), {creg_txt}oranje = voorspelling. '
         f'Tik op de grafiek om in te zoomen; ze zit ook als PNG-bijlage bij deze mail.</td></tr></table>'
     )
 
@@ -298,6 +378,8 @@ def body_html(bundle: DailyBundle, recs: list[Recommendation], tz, cid: str) -> 
     if recs:
         preheader = (f"Beste venster: {nl.when(recs[0].start, today, short=True)} {span(recs[0])} · "
                      f"gem. {nl.num(recs[0].avg_price)} {UNIT}")
+        if bundle.creg and bundle.creg.best:
+            preheader += f" · {_margin_txt(bundle.creg.best.margin_c_per_kwh)}"
     else:
         preheader = "Geen laadvenster kon aanbevolen worden — bekijk de grafiek."
     subtitle = f"{nl.day_long(today, year=True)} · prijzen van vandaag en morgen"
@@ -318,9 +400,10 @@ def body_html(bundle: DailyBundle, recs: list[Recommendation], tz, cid: str) -> 
         (_hero(bundle, recs), False),
         (_alternative(bundle, recs), False),
         (_stats(bundle), True),
+        (_creg(bundle), False),
         (_forecast(bundle), False),
         (_warnings(bundle), False),
-        (_chart(cid, f"Grafiek van de kwartierprijzen ({UNIT}) met het aanbevolen laadvenster"), False),
+        (_chart(cid, f"Grafiek van de kwartierprijzen ({UNIT}) met het aanbevolen laadvenster", bundle.creg is not None), False),
         (_footer(bundle, tz), False),
     ]
     body_rows = "".join(_row(s, columns) + _spacer(12) for s, columns in sections if s)

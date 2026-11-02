@@ -36,6 +36,8 @@ WINDOW = "#1baf7a"       # slot 3 aqua
 WINDOW_FILL = "#d2f0e4"
 AVG_PERIOD = "#52514e"
 AVG_HIST = "#9a9893"
+CREG = "#7a3fb8"         # break-even line vs the CREG reimbursement tariff
+CREG_FILL = "#efe6f8"
 
 FORECAST_MAE = 20.0      # EUR/MWh ≈ 2 ct/kWh, author's reported 2-day MAE for BE
 
@@ -86,8 +88,14 @@ def render_png(bundle: DailyBundle, recs: list[Recommendation], tz, generated_at
                     fontsize=FS_NOTE, color=TEXT, fontweight="bold" if i == 0 else "normal", zorder=6)
 
     # --- reference lines
-    ax.axhline(bundle.period_average, color=AVG_PERIOD, lw=1.2, ls="--", zorder=3,
-               label=f"Gemiddelde getoonde periode: {nl.num(bundle.period_average)} {UNIT}")
+    creg = bundle.creg
+    if creg is not None:
+        be = creg.break_even_eur_mwh
+        ax.axhline(be, color=CREG, lw=1.8, ls=(0, (6, 3)), zorder=4,
+                   label=f"Break-even CREG-tarief ({nl.num(creg.tariff_c, 2)} c€/kWh): {be:.0f} {UNIT}")
+    else:
+        ax.axhline(bundle.period_average, color=AVG_PERIOD, lw=1.2, ls="--", zorder=3,
+                   label=f"Gemiddelde getoonde periode: {nl.num(bundle.period_average)} {UNIT}")
     ax.axhline(bundle.history_average, color=AVG_HIST, lw=1.2, ls=":", zorder=3,
                label=f"Gemiddelde vorige 30 dagen: {nl.num(bundle.history_average)} {UNIT}")
 
@@ -110,6 +118,14 @@ def render_png(bundle: DailyBundle, recs: list[Recommendation], tz, generated_at
 
     # --- axes
     ax.set_xlim(actual.index[0], x_end)
+    if creg is not None:
+        lo, hi = ax.get_ylim()
+        be = creg.break_even_eur_mwh
+        if be > hi - (hi - lo) * 0.04:
+            ax.set_ylim(lo, be + (hi - lo) * 0.08)
+        ax.annotate(f"CREG break-even {be:.0f}", xy=(x_end, be), xycoords="data", xytext=(-4, 3),
+                    textcoords="offset points", ha="right", va="bottom", fontsize=FS_NOTE, color=CREG,
+                    fontweight="bold", zorder=6)
     ax.xaxis.set_major_locator(mdates.HourLocator(byhour=range(0, 24, 3), tz=tz))
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M", tz=tz))
     ax.tick_params(axis="x", labelsize=FS_TICK, colors=TEXT_2, length=0)
@@ -148,8 +164,11 @@ def render_png(bundle: DailyBundle, recs: list[Recommendation], tz, generated_at
         if len(recs) > 1:   # second title line, lighter, so a long pair never runs off the canvas
             ax.text(0.0, 1.03, f"alternatief: {_window_txt(recs[1])}", transform=ax.transAxes,
                     ha="left", va="bottom", fontsize=FS_LABEL, color=TEXT_2)
-    ax.legend(loc="upper left", bbox_to_anchor=(0.0, -0.19), ncol=2, frameon=False, fontsize=FS_LEGEND,
-              labelcolor=TEXT_2)
+    handles, labels = ax.get_legend_handles_labels()
+    order = sorted(range(len(labels)), key=lambda i: 0 if labels[i].startswith(("Gepubliceerde", "Voorspelling")) else 1)
+    ax.legend([handles[i] for i in order], [labels[i] for i in order], loc="upper left",
+              bbox_to_anchor=(0.0, -0.19), ncol=2, frameon=False, fontsize=FS_LEGEND, labelcolor=TEXT_2,
+              columnspacing=1.6, handlelength=2.2)
 
     # --- footer
     fetched = bundle.actual.fetched_at.astimezone(tz)

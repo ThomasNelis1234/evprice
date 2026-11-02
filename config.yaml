@@ -21,6 +21,48 @@ sources:
   actual: https://api.energy-charts.info
   forecast: https://epexpredictor.batzill.com
 
+# --- CREG reimbursement tariff for home-charging a company car -------------------------------
+# Quarterly all-in maximum (energy + network + levies + 6 % btw) set by FOD Financiën from the
+# CREG monthly series, with a two-month lag: Q1 = Aug–Oct, Q2 = Nov–Jan, Q3 = Feb–Apr, Q4 = May–Jul.
+# Source: https://www.creg.be/nl/consumenten/prijzen-en-tarieven/tarief-voor-terugbetaling-thuisladen-bedrijfswagens
+creg:
+  region: Vlaanderen
+  tariff_c_per_kwh: 32.25        # Q4 2026 Vlaanderen (Brussel 36.88, Wallonië 37.79)
+  valid_from: 2026-10-01
+  valid_to: 2026-12-31
+  based_on: "mei–juli 2026"
+  # The runner downloads CREG's monthly CSV and warns in the email when it implies another value
+  # for the current quarter, or when the validity period above has passed. Never blocks the email.
+  csv_url: https://www.creg.be/sites/default/files/assets/Prices/CREG_Tariff_EV.csv
+  check_online: true
+
+# --- What one extra kWh costs on top of the day-ahead price ---------------------------------
+# Taken from the ENGIE "Dynamic" tariff sheet, Vlaams Gewest, contracts from November 2026.
+# Everything here is per kWh and INCLUDING 6 % btw unless stated otherwise. Fixed yearly amounts
+# (vaste vergoeding, databeheer, capaciteitstarief) do not depend on when you charge and are left out.
+cost_stack:
+  # Energy, EXCLUDING btw, in c€/kWh:  a + b × eSpot_15   (eSpot_15 = day-ahead price in EUR/MWh)
+  energy_a: 0.7134
+  energy_b: 0.1039
+  gsc_wkk_c_per_kwh: 1.582         # Kosten groene stroom & WKK
+  green_option_c_per_kwh: 0.0      # "Optie groene stroom" is 1.060 — set it if you took that option
+  federal_excise_c_per_kwh: 4.4732 # Federale accijns, alle verbruiken
+  flemish_energy_fund_c_per_kwh: 0.0   # Bijdrage Energiefonds: 0 for a residential customer with domicile
+  distribution_operator: FLUVIUS ANTWERPEN   # pick your Fluvius zone from the table below
+  distribution_c_per_kwh:          # "Totaal kWh-tarief" digitale meter, distributie incl. transmissie, 2026
+    FLUVIUS ANTWERPEN: 5.35329
+    FLUVIUS HALLE-VILVOORDE: 5.63676
+    FLUVIUS IMEWO: 5.54236
+    FLUVIUS KEMPEN: 6.33708
+    FLUVIUS LIMBURG: 5.75257
+    FLUVIUS MIDDEN-VLAANDEREN: 5.27945
+    FLUVIUS WEST: 6.69853
+    FLUVIUS ZENNE-DIJLE: 5.87156
+  # Optional allowance for the capaciteitstarief (€/kW/year × extra monthly peak ÷ kWh charged).
+  # 0 = treat the peak tariff as sunk. Example: +4 kW peak × 52 €/kW/j ÷ 3 000 kWh/j ≈ 6.9 c€/kWh.
+  capacity_surcharge_c_per_kwh: 0.0
+  vat: 0.06
+
 http:
   timeout_seconds: 30
   retries: 3
