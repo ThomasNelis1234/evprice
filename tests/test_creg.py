@@ -8,7 +8,7 @@ import pandas as pd
 
 from evprice.config import ConfigError, CostStackConfig, CregConfig, load_config
 from evprice.creg import (CostStack, check_against_csv, compare, implied_quarter_tariff, online_warnings,
-                          parse_monthly_csv)
+                          parse_creg_csv, parse_monthly_csv)
 from evprice.http import SourceError
 from evprice.models import Recommendation
 
@@ -75,18 +75,31 @@ class TestCompare(unittest.TestCase):
 
 
 WIDE = "Date;Vlaanderen;Brussel;Wallonië\n2026-05;31,80;36,50;37,10\n2026-06;32,40;37,00;38,00\n2026-07;32,55;37,10;38,30\n"
-LONG = "Period,Region,Price (c€/kWh)\n05/2026,Flanders,31.80\n06/2026,Flanders,32.40\n07/2026,Flanders,32.55\n06/2026,Brussels,37.0\n"
 EURO = "﻿Datum;VL;BRU;WAL\n01/05/2026;0,3180;0,3650;0,3710\n01/06/2026;0,3240;0,37;0,38\n01/07/2026;0,3255;0,371;0,383\n"
 
 
 class TestCsv(unittest.TestCase):
     def test_layouts(self):
-        for text in (WIDE, LONG, EURO):
+        for text in (WIDE, EURO):
             monthly = parse_monthly_csv(text, "Vlaanderen")
             self.assertEqual(sorted(monthly), [(2026, 5), (2026, 6), (2026, 7)])
             implied, names = implied_quarter_tariff(monthly, date(2026, 11, 2))
             self.assertAlmostEqual(implied, 32.25, places=6)
             self.assertEqual(names, ["mei 2026", "juni 2026", "juli 2026"])
+
+    def test_live_creg_file(self):
+        # Real file captured by the runner on 2026-11-02: Year;Month;<region> End-user Price;<region> Average 3 months;...
+        text = (ROOT / "tests/fixtures/live/creg_tariff_ev_2026-11-02.csv").read_text(encoding="utf-8")
+        for region, monthly_jul, q4 in (("Vlaanderen", 33.65, 32.25), ("Brussel", 38.22, 36.88), ("Wallonië", 39.10, 37.79)):
+            monthly, quarterly = parse_creg_csv(text, region)
+            self.assertAlmostEqual(monthly[(2026, 7)], monthly_jul)
+            self.assertAlmostEqual(quarterly[(2026, 7)], q4)                       # CREG's own quarterly figure
+            self.assertAlmostEqual(implied_quarter_tariff(monthly, date(2026, 11, 2), quarterly)[0], q4)
+            self.assertAlmostEqual(sum(monthly[(2026, m)] for m in (5, 6, 7)) / 3, q4, places=2)   # and our own mean agrees
+        self.assertIsNone(implied_quarter_tariff(monthly, date(2027, 1, 15), quarterly)[0])      # Q1 2027 needs Aug–Oct
+        chk = check_against_csv(CREG, lambda url: text, date(2026, 11, 2))
+        self.assertTrue(chk.ok)
+        self.assertEqual(online_warnings(CREG, chk), [])
 
     def test_quarter_rule_crosses_year(self):
         monthly = {(2025, 8): 30.0, (2025, 9): 31.0, (2025, 10): 32.0, (2025, 11): 1.0, (2025, 12): 2.0, (2026, 1): 3.0}

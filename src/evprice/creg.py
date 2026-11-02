@@ -177,72 +177,97 @@ def _year_month(text: str) -> tuple[int, int] | None:
     return None
 
 
-def parse_monthly_csv(text: str, region: str) -> dict[tuple[int, int], float]:
-    """Return {(year, month): c€/kWh} for ``region`` from CREG's CSV, whatever its exact shape.
+def _region_cols(header: list[str], region: str) -> tuple[int | None, int | None]:
+    """(monthly End-user Price column, precomputed 3-month average column) for a region, or Nones."""
+    aliases = REGION_ALIASES.get(region.lower(), (region.lower(),))
+    monthly = average = None
+    for i, cell in enumerate(header):
+        c = cell.strip().lower()
+        if not any(a in c for a in aliases):
+            continue
+        if re.search(r"average|gemiddeld|moyenne|3 months|3 maanden", c):
+            average = average if average is not None else i
+        else:
+            monthly = monthly if monthly is not None else i
+    return monthly, average
 
-    Handles ';' or ',' separators, decimal commas, and both a wide layout (one column per region)
-    and a long layout (a region column plus a value column). Raises SourceError when nothing usable
-    is found, so the caller can report "could not check".
+
+def parse_creg_csv(text: str, region: str) -> tuple[dict[tuple[int, int], float], dict[tuple[int, int], float]]:
+    """Read CREG's ``CREG_Tariff_EV.csv`` for one region.
+
+    Returns ``(monthly, quarterly)``: the monthly End-user Price EV series and, where the file provides
+    it, the precomputed 3-month average keyed by the last month of its window (that is the quarterly
+    reimbursement tariff). Verified against the live file of 2026-11-02:
+
+        Year;Month;Flanders - Digital meter - End-user Price EV (c€/kWh);Flanders - ... Average 3 months (M-2 to M-4);...
+        2026;7;33,65;32,25;...
+
+    Still tolerant of ';' or ',' separators, decimal commas, a single date column instead of Year+Month,
+    and €/kWh instead of c€/kWh. Raises SourceError when nothing usable is found.
     """
-    text = text.lstrip("﻿")
+    text = text.lstrip("\ufeff")
     sample = text[:4096]
     try:
-        dialect = csv.Sniffer().sniff(sample, delimiters=";,\t|")
-        delimiter = dialect.delimiter
+        delimiter = csv.Sniffer().sniff(sample, delimiters=";,\t|").delimiter
     except csv.Error:
         delimiter = ";" if sample.count(";") >= sample.count(",") else ","
     rows = [r for r in csv.reader(io.StringIO(text), delimiter=delimiter) if any(c.strip() for c in r)]
     if len(rows) < 2:
         raise SourceError("CREG CSV: too few rows")
+    header = [h.strip() for h in rows[0]]
 
-    aliases = REGION_ALIASES.get(region.lower(), (region.lower(),))
-
-    def is_region(cell: str) -> bool:
-        c = cell.strip().lower()
-        return any(c == a or c.startswith(a) or a in c for a in aliases)
-
-    header = rows[0]
-    date_col = next((i for i, c in enumerate(header) if re.search(r"date|datum|maand|month|period", c, re.I)), None)
-    if date_col is None:   # header might not name it — take the first column that parses as a month in row 2
+    year_col = next((i for i, c in enumerate(header) if re.fullmatch(r"(year|jaar|ann[ée]e)", c, re.I)), None)
+    month_col = next((i for i, c in enumerate(header) if re.fullmatch(r"(month|maand|mois)", c, re.I)), None)
+    date_col = next((i for i, c in enumerate(header) if re.search(r"date|datum|period", c, re.I)), None)
+    if year_col is None and date_col is None:
         date_col = next((i for i, c in enumerate(rows[1]) if _year_month(c)), 0)
 
-    out: dict[tuple[int, int], float] = {}
-    region_cols = [i for i, c in enumerate(header) if is_region(c)]
-    if region_cols:                                            # wide layout
-        col = region_cols[0]
-        for r in rows[1:]:
-            if len(r) <= max(col, date_col):
-                continue
-            ym = _year_month(r[date_col])
-            val = _to_float(r[col])
-            if ym and val is not None:
-                out[ym] = val
-    else:                                                      # long layout: find a region cell per row
-        value_col = next((i for i, c in enumerate(header) if re.search(r"prijs|price|tarif|value|c€|cent", c, re.I)), None)
-        for r in rows[1:]:
-            if not any(is_region(c) for c in r):
-                continue
-            ym = _year_month(r[date_col]) if len(r) > date_col else None
-            if not ym:
-                continue
-            candidates = [r[value_col]] if value_col is not None and len(r) > value_col else \
-                [c for i, c in enumerate(r) if i != date_col and not is_region(c)]
-            vals = [v for v in (_to_float(c) for c in candidates) if v is not None]
-            if vals:
-                out[ym] = vals[-1]
-    if not out:
+    def row_ym(r: list[str]) -> tuple[int, int] | None:
+        if year_col is not None and month_col is not None:
+            try:
+                y, m = int(r[year_col]), int(r[month_col])
+            except (ValueError, IndexError):
+                return None
+            return (y, m) if 2000 <= y <= 2100 and 1 <= m <= 12 else None
+        return _year_month(r[date_col]) if len(r) > date_col else None
+
+    monthly_col, average_col = _region_cols(header, region)
+    if monthly_col is None:
+        raise SourceError(f"CREG CSV: no column for region {region!r} in header {header}")
+
+    monthly: dict[tuple[int, int], float] = {}
+    quarterly: dict[tuple[int, int], float] = {}
+    for r in rows[1:]:
+        ym = row_ym(r)
+        if not ym:
+            continue
+        if len(r) > monthly_col and (v := _to_float(r[monthly_col])) is not None:
+            monthly[ym] = v
+        if average_col is not None and len(r) > average_col and (v := _to_float(r[average_col])) is not None:
+            quarterly[ym] = v
+    if not monthly:
         raise SourceError(f"CREG CSV: no monthly values found for region {region!r}")
-    # The series may be in €/kWh rather than c€/kWh; normalise to c€/kWh.
-    if max(out.values()) < 2:
-        out = {k: v * 100 for k, v in out.items()}
-    return out
+    if max(monthly.values()) < 2:            # €/kWh instead of c€/kWh
+        monthly = {k: v * 100 for k, v in monthly.items()}
+        quarterly = {k: v * 100 for k, v in quarterly.items()}
+    return monthly, quarterly
 
 
-def implied_quarter_tariff(monthly: dict[tuple[int, int], float], today: date) -> tuple[float | None, list[str]]:
-    """Average the three months the current quarter's tariff is based on. None if any is missing."""
+def parse_monthly_csv(text: str, region: str) -> dict[tuple[int, int], float]:
+    """Monthly series only (kept for callers/tests that need just that)."""
+    return parse_creg_csv(text, region)[0]
+
+
+def implied_quarter_tariff(monthly: dict[tuple[int, int], float], today: date,
+                           quarterly: dict[tuple[int, int], float] | None = None) -> tuple[float | None, list[str]]:
+    """The tariff the current quarter should carry: CREG's own precomputed 3-month average when the
+    file has it (keyed by the last month of the window), else the mean of the three monthly values.
+    None if the months are not all available yet."""
     q = (today.month - 1) // 3 + 1
     months = [(today.year + dy, m) for dy, m in QUARTER_MONTHS[q]]
     names = [f"{MONTH_NAMES_NL[m - 1]} {y}" for y, m in months]
+    if quarterly and months[-1] in quarterly:
+        return quarterly[months[-1]], names
     if any(k not in monthly for k in months):
         return None, names
     return sum(monthly[k] for k in months) / 3, names
@@ -261,10 +286,10 @@ def check_against_csv(creg: CregConfig, fetch: TextFetcher, today: date,
         except Exception as exc:  # noqa: BLE001
             log.warning("could not save CREG CSV fixture: %s", exc)
     try:
-        monthly = parse_monthly_csv(text, creg.region)
+        monthly, quarterly = parse_creg_csv(text, creg.region)
     except SourceError as exc:
         return CsvCheck(False, None, str(exc))
-    implied, names = implied_quarter_tariff(monthly, today)
+    implied, names = implied_quarter_tariff(monthly, today, quarterly)
     if implied is None:
         have = ", ".join(f"{MONTH_NAMES_NL[m - 1]} {y}" for y, m in sorted(monthly)[-3:])
         return CsvCheck(False, None, f"CREG CSV gelezen, maar niet alle maanden ({', '.join(names)}) "
