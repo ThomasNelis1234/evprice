@@ -169,10 +169,11 @@ Why a 30-minute cron instead of one 13:00 run: GitHub cron fires in UTC and may 
 - Maintenance: the quarterly value sits in `config.yaml` with its validity period. The run warns in
   the email when that period has passed. With `check_online: true` the runner also downloads CREG's
   monthly CSV, averages the three months behind the current quarter and warns when it differs from
-  the configured value by more than 0,05 c€/kWh. The CSV layout could not be verified when this was
-  written: the reader is tolerant (`;`/`,`, decimal comma, wide or long layout, €/kWh or c€/kWh) and
-  every failure degrades to "not checked" — it never blocks the email. The raw CSV is saved to
-  `tests/fixtures/live/creg_tariff_ev_<date>.csv` on live runs so the parser can be confirmed.
+  the configured value by more than 0,05 c€/kWh. The CSV (verified on the live file of 2026-11-02,
+  kept in `tests/fixtures/live/`) has `Year;Month;<region> End-user Price EV;<region> Average 3 months;…`
+  columns, newest first; the reader uses CREG's own 3-month average (keyed by the last month of the
+  window) when present and the mean of the three monthly values otherwise. Every failure degrades to
+  "not checked" — it never blocks the email.
 
 ## 9. Configuration
 
