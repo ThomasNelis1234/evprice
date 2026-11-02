@@ -58,6 +58,8 @@ GMAIL_USER=... GMAIL_APP_PASSWORD=... python -m evprice.main --force   # send no
 | `charging_duration_hours` | 2 / 4 / 6 / 8 — consecutive hours to find |
 | `history_days` | Days in the long-run average |
 | `recipients` | List of email addresses (one email, all in To) |
+| `creg` | Quarterly CREG reimbursement tariff (c€/kWh all-in), region, validity period; `check_online` compares it with CREG's CSV |
+| `cost_stack` | Your supplier's per-kWh costs on top of the day-ahead price (from the tariff sheet) — used to compute the break-even price against the CREG tariff. Set `distribution_operator` to your Fluvius zone |
 
 Secrets live only in environment variables / GitHub Secrets.
 

@@ -147,6 +147,31 @@ Why a 30-minute cron instead of one 13:00 run: GitHub cron fires in UTC and may 
   (clearly marked as an estimate), warnings, chart, source footer.
 - Dry run also writes `ev-prices-<date>.html` (chart path swapped in for the CID) for browser preview.
 
+## 8b. Comparison with the CREG reimbursement tariff (`creg.py`)
+
+- The CREG tariff is the quarterly all-in maximum (energy + network + levies + 6 % btw, c€/kWh) an
+  employer may reimburse for home charging a company car. FOD Financiën derives it from the CREG
+  monthly series with a two-month lag (Q1 = Aug–Oct, Q2 = Nov–Jan, Q3 = Feb–Apr, Q4 = May–Jul), per
+  region of residence. The CREG profile is a household with an EV: digital meter, 8 000 kWh/year,
+  7,36 kW average monthly peak. Reference: creg.be → "Tarief terugbetaling thuisladen bedrijfswagens".
+- Our prices are raw day-ahead EUR/MWh, so the comparison models the household's *marginal* cost
+  per kWh on a dynamic contract, from the supplier tariff sheet in `config.yaml` (`cost_stack`):
+  `all_in(P) = (a + b·P)·(1+btw) + GSC/WKK + green option + Fluvius kWh-tarief + federale accijns +
+  energiefonds + optional capacity surcharge`. Inverting gives the **break-even day-ahead price**,
+  drawn as a purple line on the chart (it replaces the period-average line; that average stays in the
+  stat tiles). Fixed yearly amounts and the capaciteitstarief are deliberately excluded — they do not
+  depend on *when* you charge — and the email says so.
+- Email: hero pill shows all-in c€/kWh and the margin vs CREG (green under, red over); a CREG card
+  lists cost and margin for the best window, the alternative and the period average; the subject
+  carries `· N c onder/boven CREG`.
+- Maintenance: the quarterly value sits in `config.yaml` with its validity period. The run warns in
+  the email when that period has passed. With `check_online: true` the runner also downloads CREG's
+  monthly CSV, averages the three months behind the current quarter and warns when it differs from
+  the configured value by more than 0,05 c€/kWh. The CSV layout could not be verified when this was
+  written: the reader is tolerant (`;`/`,`, decimal comma, wide or long layout, €/kWh or c€/kWh) and
+  every failure degrades to "not checked" — it never blocks the email. The raw CSV is saved to
+  `tests/fixtures/live/creg_tariff_ev_<date>.csv` on live runs so the parser can be confirmed.
+
 ## 9. Configuration
 
 Non-secret (`config.yaml`, committed):

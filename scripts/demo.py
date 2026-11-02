@@ -51,6 +51,20 @@ def make_fake_fetcher(cfg, now_local, *, forecast_ok=True, tomorrow_ok=True):
     return fetcher
 
 
+CREG_CSV_SAMPLE = (
+    "Date;Vlaanderen;Brussel;Wallonië\n"
+    "2026-05;31,80;36,50;37,10\n2026-06;32,40;37,00;38,00\n2026-07;32,55;37,10;38,30\n"
+)
+
+
+def make_fake_text_fetcher(*, creg_ok=True):
+    def fetcher(url):
+        if "CREG" in url and creg_ok:
+            return CREG_CSV_SAMPLE
+        raise SourceError(f"simulated outage for {url}")
+    return fetcher
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--now", default="2026-10-20T14:20")
@@ -61,7 +75,7 @@ def main() -> None:
     cfg = load_config(Path(__file__).resolve().parents[1] / "config.yaml")
     now = datetime.fromisoformat(a.now).replace(tzinfo=cfg.tz)
     fetcher = make_fake_fetcher(cfg, now, forecast_ok=not a.no_forecast, tomorrow_ok=not a.no_tomorrow)
-    outcome = run(cfg, fetcher, now, dry_run=True, force=a.force)
+    outcome = run(cfg, fetcher, now, dry_run=True, force=a.force, text_fetcher=make_fake_text_fetcher())
     print("outcome:", outcome, "->", cfg.output_dir.resolve())
 
 

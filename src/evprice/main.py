@@ -16,7 +16,8 @@ from pathlib import Path
 import pandas as pd
 
 from .config import Config, load_config
-from .http import JsonFetcher, SourceError, make_fetcher
+from . import creg as cregmod
+from .http import JsonFetcher, SourceError, TextFetcher, make_fetcher, make_text_fetcher
 from .mailer import build_message, send
 from .models import ActualPrices, DailyBundle, ForecastPrices, Recommendation
 from .plot import render_png
@@ -107,9 +108,18 @@ def _save_fixture(fixture_dir: Path, name: str, payload: dict) -> None:
     (fixture_dir / name).write_text(json.dumps(payload), encoding="utf-8")
 
 
+def _save_fixture_text(fixture_dir: Path, name: str, text: str) -> None:
+    fixture_dir.mkdir(parents=True, exist_ok=True)
+    (fixture_dir / name).write_text(text, encoding="utf-8")
+
+
 def run(cfg: Config, fetcher: JsonFetcher, now: datetime | None = None, *,
-        dry_run: bool = False, force: bool = False, sender=send, fixture_dir: Path | None = None) -> str:
-    """Execute one tick. Returns an Outcome string."""
+        dry_run: bool = False, force: bool = False, sender=send, fixture_dir: Path | None = None,
+        text_fetcher: TextFetcher | None = None) -> str:
+    """Execute one tick. Returns an Outcome string.
+
+    ``text_fetcher`` is used only for the optional CREG CSV check; None skips that check.
+    """
     tz = cfg.tz
     now = now or datetime.now(timezone.utc)
     now_local = now.astimezone(tz)
@@ -142,6 +152,19 @@ def run(cfg: Config, fetcher: JsonFetcher, now: datetime | None = None, *,
     recs = cheapest_windows(bundle.actual, cfg.charging_duration_hours)
     if not recs:
         bundle.warnings.append("te weinig aaneengesloten gepubliceerde kwartieren voor de gevraagde laadduur")
+
+    if cfg.creg and cfg.cost_stack:
+        online: list[str] = []
+        if cfg.creg.check_online and text_fetcher is not None:
+            save = (lambda t: _save_fixture_text(fixture_dir, f"creg_tariff_ev_{today}.csv", t)) if fixture_dir else None
+            try:   # a check, never a reason to lose the email
+                check = cregmod.check_against_csv(cfg.creg, text_fetcher, today, save_raw=save)
+                log.info("CREG check: %s", check.detail)
+                online = cregmod.online_warnings(cfg.creg, check)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("CREG online check crashed: %s", exc)
+        bundle.creg = cregmod.compare(cfg.creg, cfg.cost_stack, recs, bundle.period_average, today, online)
+        bundle.warnings.extend(bundle.creg.warnings)
 
     png = render_png(bundle, recs, tz, generated_at=now, horizon_end=day_bounds(today + timedelta(days=2), tz)[1])
     msg = build_message(cfg, bundle, recs, png)
@@ -188,7 +211,8 @@ def cli(argv: list[str] | None = None) -> int:
         now = now.replace(tzinfo=cfg.tz)
     fetcher = make_fetcher(cfg.http)
     outcome = run(cfg, fetcher, now, dry_run=a.dry_run, force=a.force,
-                  fixture_dir=Path(a.save_fixtures) if a.save_fixtures else None)
+                  fixture_dir=Path(a.save_fixtures) if a.save_fixtures else None,
+                  text_fetcher=make_text_fetcher(cfg.http))
     return 0 if outcome != Outcome.FAILED else 1
 
 

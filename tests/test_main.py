@@ -15,7 +15,7 @@ from evprice.config import load_config  # noqa: E402
 from evprice.http import SourceError  # noqa: E402
 from evprice.main import Outcome, run  # noqa: E402
 from evprice.state import State  # noqa: E402
-from demo import make_fake_fetcher  # noqa: E402
+from demo import make_fake_fetcher, make_fake_text_fetcher  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -37,9 +37,10 @@ class Harness(unittest.TestCase):
     def at(self, s: str) -> datetime:
         return datetime.fromisoformat(s).replace(tzinfo=self.cfg.tz)
 
-    def go(self, now: str, **fake):
+    def go(self, now: str, creg_ok=True, **fake):
         n = self.at(now)
-        return run(self.cfg, make_fake_fetcher(self.cfg, n, **fake), n, sender=self.sender)
+        return run(self.cfg, make_fake_fetcher(self.cfg, n, **fake), n, sender=self.sender,
+                   text_fetcher=make_fake_text_fetcher(creg_ok=creg_ok))
 
 
 class TestRun(Harness):
@@ -147,6 +148,47 @@ class TestRun(Harness):
         html = self.sent[0].get_body(("html",)).get_content()
         self.assertIn("niet beschikbaar", html)
         self.assertIn("Opgelet", html)
+
+    def test_creg_comparison_in_email(self):
+        self.go("2026-10-20T14:20")
+        msg = self.sent[0]
+        self.assertRegex(msg["Subject"], r"\d+ c (onder|boven) CREG")
+        text = msg.get_body(("plain",)).get_content()
+        self.assertIn("CREG-tarief Q4 2026 Vlaanderen: 32,25 c€/kWh", text)
+        self.assertIn("Break-even day-aheadprijs", text)
+        html = msg.get_body(("html",)).get_content()
+        self.assertIn("CREG-tarief Q4 2026", html)
+        self.assertIn("182 EUR/MWh", html)
+        self.assertNotIn("goedkoper dan het gemiddelde", html)   # the pill now compares with CREG
+        self.assertNotIn("controleer config.yaml", html)         # sample CSV agrees with config
+
+    def test_creg_csv_outage_is_silent(self):
+        self.go("2026-10-20T14:20", creg_ok=False)
+        html = self.sent[0].get_body(("html",)).get_content()
+        self.assertIn("CREG-tarief Q4 2026", html)
+        self.assertNotIn("Opgelet", html)
+
+    def test_creg_config_expired_warns(self):
+        self.go("2027-01-05T14:20", creg_ok=False)
+        text = self.sent[0].get_body(("plain",)).get_content()
+        self.assertIn("niet meer geldig", text)
+        self.assertIn("gegevens onvolledig", self.sent[0]["Subject"])
+
+    def test_creg_csv_mismatch_warns(self):
+        cfg = self.cfg.__class__(**{**self.cfg.__dict__,
+                                   "creg": self.cfg.creg.__class__(**{**self.cfg.creg.__dict__, "tariff_c_per_kwh": 30.0})})
+        n = self.at("2026-10-20T14:20")
+        run(cfg, make_fake_fetcher(cfg, n), n, sender=self.sender, text_fetcher=make_fake_text_fetcher())
+        text = self.sent[0].get_body(("plain",)).get_content()
+        self.assertIn("controleer config.yaml", text)
+
+    def test_without_creg_config_the_old_email_still_works(self):
+        cfg = self.cfg.__class__(**{**self.cfg.__dict__, "creg": None, "cost_stack": None})
+        n = self.at("2026-10-20T14:20")
+        self.assertEqual(run(cfg, make_fake_fetcher(cfg, n), n, sender=self.sender), Outcome.SENT)
+        html = self.sent[0].get_body(("html",)).get_content()
+        self.assertNotIn("CREG", html)
+        self.assertIn("goedkoper dan het gemiddelde", html)
 
 
 class TestDutchFormatting(unittest.TestCase):
