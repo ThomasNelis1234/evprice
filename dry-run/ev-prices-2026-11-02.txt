@@ -1,0 +1,27 @@
+EV-laadplanner — maandag 2 november 2026
+
+Goedkoopste laadvenster van 4 uur, op basis van gepubliceerde marktprijzen:
+  Beste:       vandaag, maandag 2 november, 14u00 → 18u00   gem. 252,6 EUR/MWh
+               ≈ 40,0 c€/kWh all-in, 7,7 c€/kWh boven het CREG-tarief
+  Alternatief: vandaag, maandag 2 november, 20u00 → 24u00   gem. 254,1 EUR/MWh
+
+Gemiddelde van de getoonde periode:  265,2 EUR/MWh
+Gemiddelde van de vorige 30 dagen:   175,0 EUR/MWh
+
+CREG-tarief Q4 2026 Vlaanderen: 32,25 c€/kWh all-in (gebaseerd op mei–juli 2026).
+Break-even day-aheadprijs met jouw kostenstructuur: 182 EUR/MWh — daarboven kost laden meer dan je terugkrijgt.
+  beste venster                 252,6 EUR/MWh →  40,0 c€/kWh all-in, 7,7 c€/kWh boven het CREG-tarief
+  alternatief                   254,1 EUR/MWh →  40,2 c€/kWh all-in, 7,9 c€/kWh boven het CREG-tarief
+  gemiddelde getoonde periode   265,2 EUR/MWh →  41,4 c€/kWh all-in, 9,1 c€/kWh boven het CREG-tarief
+Het capaciteitstarief (maandpiek) zit hier niet in; laad traag genoeg om je piek niet op te drijven.
+
+Overmorgen (woensdag 4 november): enkel een voorspelling, gemiddeld 247,5 EUR/MWh — een schatting, geen marktprijs. Wordt niet gebruikt voor de aanbeveling.
+
+Opgelet:
+  ! de prijzen van morgen zijn nog niet gepubliceerd — de aanbeveling geldt enkel voor vandaag
+
+Ruwe groothandelsprijzen day-ahead (EUR/MWh, exclusief taksen en nettarieven), Belgische biedzone, opgehaald op maandag 2 november om 13u18 (CET).
+Day-aheadprijzen: Bundesnetzagentur | SMARD.de via energy-charts.info (CC BY 4.0)
+Voorspelling: EpexPredictor (b3nn0), statistisch model — schattingen, geen marktprijzen
+
+De grafiek zit als PNG bij deze mail.
