@@ -1,19 +1,6 @@
 {
-  "updated_at": "2026-11-06T16:15:49+00:00",
+  "updated_at": "2026-11-06T17:18:34+00:00",
   "runs": [
-    {
-      "run_date": "2026-10-24",
-      "started_at": "2026-10-24T11:55:18+00:00",
-      "status": "skipped",
-      "reason": "tomorrow not yet published; will retry",
-      "sent_at": null,
-      "warnings": [
-        "de prijzen van morgen zijn nog niet gepubliceerd \u2014 de aanbeveling geldt enkel voor vandaag"
-      ],
-      "actual_slots": 0,
-      "forecast_slots": 0,
-      "tomorrow_published": false
-    },
     {
       "run_date": "2026-10-24",
       "started_at": "2026-10-24T12:21:19+00:00",
@@ -681,6 +668,17 @@
     {
       "run_date": "2026-11-06",
       "started_at": "2026-11-06T16:15:49+00:00",
+      "status": "skipped",
+      "reason": "already sent today",
+      "sent_at": null,
+      "warnings": [],
+      "actual_slots": 0,
+      "forecast_slots": 0,
+      "tomorrow_published": null
+    },
+    {
+      "run_date": "2026-11-06",
+      "started_at": "2026-11-06T17:18:34+00:00",
       "status": "skipped",
       "reason": "already sent today",
       "sent_at": null,
