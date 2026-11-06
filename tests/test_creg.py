@@ -88,8 +88,10 @@ class TestCsv(unittest.TestCase):
             self.assertEqual(names, ["mei 2026", "juni 2026", "juli 2026"])
 
     def test_live_creg_file(self):
-        # Real file captured by the runner on 2026-11-02: Year;Month;<region> End-user Price;<region> Average 3 months;...
-        text = (ROOT / "tests/fixtures/live/creg_tariff_ev_2026-11-02.csv").read_text(encoding="utf-8")
+        # Real file captured by the runner on 2026-11-02 (midday, data up to July 2026):
+        # Year;Month;<region> End-user Price;<region> Average 3 months;...
+        # Frozen copy outside tests/fixtures/live/, which the daily run overwrites with fresh downloads.
+        text = (ROOT / "tests/fixtures/creg/creg_tariff_ev_until_2026-07.csv").read_text(encoding="utf-8")
         for region, monthly_jul, q4 in (("Vlaanderen", 33.65, 32.25), ("Brussel", 38.22, 36.88), ("Wallonië", 39.10, 37.79)):
             monthly, quarterly = parse_creg_csv(text, region)
             self.assertAlmostEqual(monthly[(2026, 7)], monthly_jul)
@@ -100,6 +102,15 @@ class TestCsv(unittest.TestCase):
         chk = check_against_csv(CREG, lambda url: text, date(2026, 11, 2))
         self.assertTrue(chk.ok)
         self.assertEqual(online_warnings(CREG, chk), [])
+
+    def test_live_creg_file_with_q1_2027(self):
+        # Same CSV re-downloaded on 2026-11-02 at 14:00 UTC, after CREG added August–October 2026.
+        text = (ROOT / "tests/fixtures/creg/creg_tariff_ev_until_2026-10.csv").read_text(encoding="utf-8")
+        for region, q4, q1 in (("Vlaanderen", 32.25, 36.16), ("Brussel", 36.88, 41.36), ("Wallonië", 37.79, 41.88)):
+            monthly, quarterly = parse_creg_csv(text, region)
+            self.assertAlmostEqual(implied_quarter_tariff(monthly, date(2026, 11, 2), quarterly)[0], q4)
+            self.assertAlmostEqual(implied_quarter_tariff(monthly, date(2027, 1, 15), quarterly)[0], q1)
+            self.assertAlmostEqual(sum(monthly[(2026, m)] for m in (8, 9, 10)) / 3, q1, places=2)
 
     def test_quarter_rule_crosses_year(self):
         monthly = {(2025, 8): 30.0, (2025, 9): 31.0, (2025, 10): 32.0, (2025, 11): 1.0, (2025, 12): 2.0, (2026, 1): 3.0}
