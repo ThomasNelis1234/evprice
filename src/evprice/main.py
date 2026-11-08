@@ -16,6 +16,7 @@ from pathlib import Path
 import pandas as pd
 
 from .config import Config, load_config
+from . import contracts as contractsmod
 from . import creg as cregmod
 from .http import JsonFetcher, SourceError, TextFetcher, make_fetcher, make_text_fetcher
 from .mailer import build_message, send
@@ -165,6 +166,11 @@ def run(cfg: Config, fetcher: JsonFetcher, now: datetime | None = None, *,
                 log.warning("CREG online check crashed: %s", exc)
         bundle.creg = cregmod.compare(cfg.creg, cfg.cost_stack, recs, bundle.period_average, today, online)
         bundle.warnings.extend(bundle.creg.warnings)
+    if cfg.contracts and cfg.cost_stack and cfg.contracts.items:
+        bundle.contracts = contractsmod.compare(cfg.contracts, cfg.cost_stack, bundle.actual, bundle.history,
+                                                recs, today, cfg.charging_duration_hours,
+                                                horizon_end=day_bounds(today + timedelta(days=2), tz)[1])
+        log.info("contracts: EPEXDAM %s", bundle.contracts.epexdam.describe())
 
     png = render_png(bundle, recs, tz, generated_at=now, horizon_end=day_bounds(today + timedelta(days=2), tz)[1])
     msg = build_message(cfg, bundle, recs, png)

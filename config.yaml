@@ -75,6 +75,40 @@ cost_stack:
       FLUVIUS ZENNE-DIJLE: 59.4902
   vat: 0.06
 
+# --- Other ENGIE contracts to compare with (Vlaams Gewest, tariefkaarten november 2026) ------------
+# Only the ENERGY part differs between contracts: network costs, levies, capacity tariff and btw are the
+# same for everyone, so they come from cost_stack above. Energy formulas are c€/kWh EXCLUDING btw:
+#     a + b × EPEXDAM
+# where EPEXDAM is the arithmetic mean of the daily day-ahead quotes of the DELIVERY month — it is only
+# known at the end of the month. The runner estimates it from this month's published day-ahead prices
+# (daily means so far); with fewer than `min_days` days it falls back to the reference value below.
+contracts:
+  epexdam:
+    reference_eur_mwh: 174.40        # last published value on the tariff sheets: oktober 2026
+    reference_month: "oktober 2026"
+    min_days: 3
+  items:
+    - name: Basic Online
+      kind: flat                     # one price all day (enkelvoudig)
+      formula: {a: 1.4600, b: 0.1167}
+      fixed_fee_eur_year: 20.00
+      note: "variabel, 2 jaar, 100 % online"
+    - name: Empower Flextime
+      kind: tou                      # time-of-use: piek / dal / superdal
+      fixed_fee_eur_year: 90.00
+      note: "variabel, 100 % Belgisch groen, EV-contract"
+      default_period: dal
+      periods:
+        piek:     {a: 2.5314, b: 0.1428}
+        dal:      {a: 1.8864, b: 0.1066}
+        superdal: {a: 0.9064, b: 0.0842}
+      schedule:                      # local clock hours [from, to); everything else is the default period
+        weekday:
+          piek: ["07-11", "17-22"]
+          superdal: ["01-07"]
+        weekend:
+          superdal: ["01-07", "11-17"]
+
 http:
   timeout_seconds: 30
   retries: 3

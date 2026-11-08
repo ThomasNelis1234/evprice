@@ -92,6 +92,16 @@ class TestRun(Harness):
         self.assertEqual(run(self.cfg, f, n + timedelta(minutes=30), sender=self.sender), Outcome.SENT)
         self.assertEqual(len(self.sent), 1)
 
+    def test_email_mentions_other_contracts(self):
+        self.go("2026-10-20T14:20")
+        msg = self.sent[0]
+        text = msg.get_body(("plain",)).get_content()
+        html = msg.get_body(("html",)).get_content()
+        for name in ("Basic Online", "Empower Flextime"):
+            self.assertIn(name, text)
+            self.assertIn(name, html)
+        self.assertIn("EPEXDAM", text)
+
     def test_email_structure(self):
         self.go("2026-10-20T14:20")
         msg = self.sent[0]

@@ -1,0 +1,31 @@
+EV-laadplanner — zaterdag 7 november 2026
+
+Goedkoopste laadvenster van 4 uur, op basis van gepubliceerde marktprijzen:
+  Beste:       morgen, zondag 8 november, 10u15 → 14u15   gem. 211,8 EUR/MWh
+               ≈ 39,1 c€/kWh all-in, 6,9 c€/kWh boven het CREG-tarief
+  Alternatief: morgen, zondag 8 november, 02u15 → 06u15   gem. 214,9 EUR/MWh
+
+Gemiddelde van de getoonde periode:  256,8 EUR/MWh
+Gemiddelde van de vorige 30 dagen:   187,2 EUR/MWh
+
+CREG-tarief Q4 2026 Vlaanderen: 32,25 c€/kWh all-in (gebaseerd op mei–juli 2026).
+Break-even day-aheadprijs met jouw kostenstructuur: 149 EUR/MWh — daarboven kost laden meer dan je terugkrijgt.
+  beste venster                 211,8 EUR/MWh →  39,1 c€/kWh all-in, 6,9 c€/kWh boven het CREG-tarief
+  alternatief                   214,9 EUR/MWh →  39,5 c€/kWh all-in, 7,2 c€/kWh boven het CREG-tarief
+  gemiddelde getoonde periode   256,8 EUR/MWh →  44,1 c€/kWh all-in, 11,8 c€/kWh boven het CREG-tarief
+Inclusief ≈ 3,2 c€/kWh capaciteitstarief (+2,5 kW maandpiek door het laden, laden begrensd op 4,6 kW).
+
+Vergelijking met andere ENGIE-contracten (zelfde nettarieven en heffingen; EPEXDAM geschat op 257,6 EUR/MWh uit 8 gepubliceerde dagen van november):
+  Jouw Dynamic           beste venster  39,1 c€/kWh ≈ 7,20 € per laadbeurt van 18,4 kWh
+  Basic Online           beste venster  48,5 c€/kWh ≈ 8,92 € → dynamisch goedkoper met 9,3 c€/kWh
+                         break-even day-ahead: 297 EUR/MWh
+  Empower Flextime       beste venster  40,4 c€/kWh ≈ 7,43 € → dynamisch goedkoper met 1,2 c€/kWh
+                         break-even day-ahead: 211–372 EUR/MWh naargelang het uur
+
+Overmorgen (maandag 9 november): enkel een voorspelling, gemiddeld 264,8 EUR/MWh — een schatting, geen marktprijs. Wordt niet gebruikt voor de aanbeveling.
+
+Ruwe groothandelsprijzen day-ahead (EUR/MWh, exclusief taksen en nettarieven), Belgische biedzone, opgehaald op zondag 8 november om 18u28 (CET).
+Day-aheadprijzen: Bundesnetzagentur | SMARD.de via energy-charts.info (CC BY 4.0)
+Voorspelling: EpexPredictor (b3nn0), statistisch model — schattingen, geen marktprijzen
+
+De grafiek zit als PNG bij deze mail.
