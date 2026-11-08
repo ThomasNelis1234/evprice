@@ -186,7 +186,7 @@ earliest_send_local: "13:00"
 publication_cutoff_local: "18:00"
 charging_duration_hours: 4
 history_days: 30
-recipient: thomasnelis1234@gmail.com
+recipient: sender@example.com
 sources:
   actual: https://api.energy-charts.info
   forecast: https://epexpredictor.batzill.com

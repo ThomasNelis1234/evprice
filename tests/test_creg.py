@@ -143,7 +143,7 @@ class TestCsv(unittest.TestCase):
 
 class TestConfig(unittest.TestCase):
     def test_repo_config_parses(self):
-        cfg = load_config(ROOT / "config.yaml", env={})
+        cfg = load_config(ROOT / "config.yaml", env={"RECIPIENTS": "t@example.com"})
         self.assertIsNotNone(cfg.creg)
         self.assertIsNotNone(cfg.cost_stack)
         self.assertEqual(cfg.cost_stack.distribution_operator, "FLUVIUS LIMBURG")
@@ -160,12 +160,12 @@ class TestConfig(unittest.TestCase):
         raw["cost_stack"]["capacity"]["extra_peak_kw"] = 0
         with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
             yaml.safe_dump(raw, f)
-        self.assertEqual(load_config(f.name, env={}).cost_stack.capacity_surcharge_c_per_kwh, 0.0)
+        self.assertEqual(load_config(f.name, env={"RECIPIENTS": "t@example.com"}).cost_stack.capacity_surcharge_c_per_kwh, 0.0)
         raw["cost_stack"]["capacity_surcharge_c_per_kwh"] = 1.5     # explicit value wins over the formula
         raw["cost_stack"]["capacity"]["extra_peak_kw"] = 2.5
         with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
             yaml.safe_dump(raw, f)
-        self.assertEqual(load_config(f.name, env={}).cost_stack.capacity_surcharge_c_per_kwh, 1.5)
+        self.assertEqual(load_config(f.name, env={"RECIPIENTS": "t@example.com"}).cost_stack.capacity_surcharge_c_per_kwh, 1.5)
 
     def test_unknown_operator_is_rejected(self):
         import tempfile
@@ -175,7 +175,7 @@ class TestConfig(unittest.TestCase):
         with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
             yaml.safe_dump(raw, f)
         with self.assertRaises(ConfigError):
-            load_config(f.name, env={})
+            load_config(f.name, env={"RECIPIENTS": "t@example.com"})
 
 
 if __name__ == "__main__":
