@@ -23,7 +23,8 @@ ROOT = Path(__file__).resolve().parents[1]
 class Harness(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
-        cfg = load_config(ROOT / "config.yaml", env={"GMAIL_USER": "u@example.com", "GMAIL_APP_PASSWORD": "x"})
+        cfg = load_config(ROOT / "config.yaml", env={"GMAIL_USER": "u@example.com", "GMAIL_APP_PASSWORD": "x",
+                                                        "RECIPIENTS": "one@example.com, two@example.com"})
         self.cfg = cfg.__class__(**{**cfg.__dict__, "state_file": Path(self.tmp.name) / "runs.json",
                                    "output_dir": Path(self.tmp.name) / "out"})
         self.sent = []
@@ -95,7 +96,7 @@ class TestRun(Harness):
         self.go("2026-10-20T14:20")
         msg = self.sent[0]
         self.assertEqual(msg["To"], ", ".join(self.cfg.recipients))
-        self.assertEqual(len(self.cfg.recipients), 3)
+        self.assertEqual(len(self.cfg.recipients), 2)
         parts = [p.get_content_type() for p in msg.walk()]
         self.assertIn("text/plain", parts)
         self.assertIn("text/html", parts)

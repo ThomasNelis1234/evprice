@@ -2,10 +2,13 @@ name: Daily EV charging price alert
 
 on:
   schedule:
-    # Every 30 minutes, 11:00–17:30 UTC = 13:00–19:30 CEST / 12:00–18:30 CET.
-    # Each tick is idempotent: it exits immediately before 13:00 local, once today's
-    # email has been sent, or while tomorrow's prices are still unpublished (until the cutoff).
-    - cron: "0,30 11-17 * * *"
+    # Three ticks a day (cron is UTC and does not follow DST):
+    #   12:15 UTC = 13:15 CET / 14:15 CEST — first try, EPEX day-ahead results are normally out by ~13:00
+    #   14:15 UTC = 15:15 CET / 16:15 CEST — retry if tomorrow was not yet published
+    #   17:15 UTC = 18:15 CET / 19:15 CEST — last try, past the 18:00 publication cutoff so it always sends
+    # Each tick is idempotent (exits once today's email has been sent). A cheap stdlib gate step below
+    # skips the dependency install and tests on ticks that would exit immediately anyway.
+    - cron: "15 12,14,17 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
@@ -36,16 +39,26 @@ jobs:
           python-version: "3.12"
           cache: pip
 
+      # Stdlib-only, sub-second: skip the expensive steps before 13:00 local or once today's email is out.
+      - name: Gate
+        id: gate
+        if: ${{ !inputs.force }}
+        run: python scripts/gate.py
+
       - name: Install
+        if: ${{ steps.gate.outputs.skip != 'true' }}
         run: pip install -e .
 
       - name: Run tests
+        if: ${{ steps.gate.outputs.skip != 'true' }}
         run: python -m unittest discover -s tests -t . -q
 
       - name: Run daily job
+        if: ${{ steps.gate.outputs.skip != 'true' }}
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          RECIPIENTS: ${{ secrets.RECIPIENTS }}
           TZ: Europe/Brussels
         run: |
           ARGS="--save-fixtures tests/fixtures/live"
@@ -54,14 +67,14 @@ jobs:
           python -m evprice.main $ARGS
 
       - name: Upload dry-run output
-        if: ${{ inputs.dry_run }}
+        if: ${{ inputs.dry_run && steps.gate.outputs.skip != 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: dry-run-output
           path: out/
 
       - name: Commit run state, live fixtures and dry-run output
-        if: ${{ always() }}
+        if: ${{ always() && steps.gate.outputs.skip != 'true' }}
         run: |
           git config user.name "evprice-bot"
           git config user.email "evprice-bot@users.noreply.github.com"

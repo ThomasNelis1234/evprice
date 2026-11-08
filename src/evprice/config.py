@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass, field
 from datetime import date, time
 from pathlib import Path
@@ -103,13 +104,20 @@ def _parse_time(value: str, name: str) -> time:
         raise ConfigError(f"{name} must be HH:MM, got {value!r}") from exc
 
 
-def _parse_recipients(raw: dict) -> tuple[str, ...]:
-    value = raw.get("recipients", raw.get("recipient"))
-    if isinstance(value, str):
-        value = [value]
+def _parse_recipients(raw: dict, env) -> tuple[str, ...]:
+    """Recipients come from the RECIPIENTS environment variable (comma/semicolon/space separated),
+    so that no personal address has to live in the repository. config.yaml 'recipients' is a fallback
+    for local use only."""
+    env_value = (env.get("RECIPIENTS") or "").strip()
+    if env_value:
+        value = [v for v in re.split(r"[,;\s]+", env_value) if v]
+    else:
+        value = raw.get("recipients", raw.get("recipient"))
+        if isinstance(value, str):
+            value = [value]
     recipients = tuple(str(v).strip() for v in (value or []) if str(v).strip())
     if not recipients:
-        raise ConfigError("config needs at least one address under 'recipients'")
+        raise ConfigError("set RECIPIENTS in the environment (or 'recipients' in config.yaml) — at least one address")
     for r in recipients:
         if "@" not in r:
             raise ConfigError(f"invalid recipient address: {r!r}")
@@ -236,7 +244,7 @@ def load_config(path: str | Path = "config.yaml", env: dict | None = None) -> Co
         publication_cutoff_local=_parse_time(raw.get("publication_cutoff_local", "18:00"), "publication_cutoff_local"),
         charging_duration_hours=duration,
         history_days=int(raw.get("history_days", 30)),
-        recipients=_parse_recipients(raw),
+        recipients=_parse_recipients(raw, env),
         actual_base_url=str(sources.get("actual", "https://api.energy-charts.info")).rstrip("/"),
         forecast_base_url=str(sources.get("forecast", "https://epexpredictor.batzill.com")).rstrip("/"),
         http=HttpConfig(
