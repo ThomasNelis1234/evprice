@@ -1,0 +1,29 @@
+EV-laadplanner — zondag 8 november 2026
+
+Goedkoopste laadvenster van 4 uur, op basis van gepubliceerde marktprijzen:
+  Beste:       morgen, maandag 9 november, 00u30 → 04u30   gem. 224,1 EUR/MWh
+               ≈ 40,5 c€/kWh all-in, 8,2 c€/kWh boven het CREG-tarief
+
+Gemiddelde van de getoonde periode:  317,7 EUR/MWh
+Gemiddelde van de vorige 30 dagen:   190,9 EUR/MWh
+
+CREG-tarief Q4 2026 Vlaanderen: 32,25 c€/kWh all-in (gebaseerd op mei–juli 2026).
+Break-even day-aheadprijs met jouw kostenstructuur: 149 EUR/MWh — daarboven kost laden meer dan je terugkrijgt.
+  beste venster                 224,1 EUR/MWh →  40,5 c€/kWh all-in, 8,2 c€/kWh boven het CREG-tarief
+  gemiddelde getoonde periode   317,7 EUR/MWh →  50,8 c€/kWh all-in, 18,6 c€/kWh boven het CREG-tarief
+Inclusief ≈ 3,2 c€/kWh capaciteitstarief (+2,5 kW maandpiek door het laden, laden begrensd op 4,6 kW).
+
+Vergelijking met andere ENGIE-contracten (zelfde nettarieven en heffingen; EPEXDAM geschat op 266,4 EUR/MWh uit 9 gepubliceerde dagen van november):
+  Jouw Dynamic           beste venster  40,5 c€/kWh ≈ 7,45 € per laadbeurt van 18,4 kWh
+  Basic Online           beste venster  49,6 c€/kWh ≈ 9,12 € → dynamisch goedkoper met 9,1 c€/kWh
+                         break-even day-ahead: 306 EUR/MWh
+  Empower Flextime       beste venster  40,7 c€/kWh ≈ 7,49 € → dynamisch goedkoper met 0,2 c€/kWh
+                         break-even day-ahead: 218–384 EUR/MWh naargelang het uur
+
+Overmorgen (dinsdag 10 november): enkel een voorspelling, gemiddeld 338,7 EUR/MWh — een schatting, geen marktprijs. Wordt niet gebruikt voor de aanbeveling.
+
+Ruwe groothandelsprijzen day-ahead (EUR/MWh, exclusief taksen en nettarieven), Belgische biedzone, opgehaald op zondag 8 november om 18u41 (CET).
+Day-aheadprijzen: Bundesnetzagentur | SMARD.de via energy-charts.info (CC BY 4.0)
+Voorspelling: EpexPredictor (b3nn0), statistisch model — schattingen, geen marktprijzen
+
+De grafiek zit als PNG bij deze mail.
