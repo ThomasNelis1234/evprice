@@ -61,6 +61,7 @@ GMAIL_USER=... GMAIL_APP_PASSWORD=... RECIPIENTS=a@x.be,b@y.be python -m evprice
 | `recipients` | Local fallback only — in Actions the `RECIPIENTS` secret is used (one email, all in To) |
 | `creg` | Quarterly CREG reimbursement tariff (c€/kWh all-in), region, validity period; `check_online` compares it with CREG's CSV |
 | `cost_stack` | Your supplier's per-kWh costs on top of the day-ahead price (from the tariff sheet) — used to compute the break-even price against the CREG tariff. Set `distribution_operator` to your Fluvius zone |
+| `contracts` | Other supplier contracts to compare with (energy formulas `a + b × EPEXDAM` from their tariff sheets, flat or time-of-use with a weekday/weekend schedule). EPEXDAM is estimated from this month's day-ahead prices. Adds break-even lines to the chart and a cost table to the email |
 
 Secrets and personal data (Gmail credentials, recipient addresses) live only in environment variables / GitHub Secrets.
 

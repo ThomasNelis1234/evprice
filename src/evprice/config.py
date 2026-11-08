@@ -72,6 +72,38 @@ class CostStackConfig:
 
 
 @dataclass(frozen=True)
+class Formula:
+    """Supplier energy formula, c€/kWh excl. btw: a + b × EPEXDAM (EUR/MWh)."""
+    a: float
+    b: float
+
+    def __call__(self, epexdam_eur_mwh: float) -> float:
+        return self.a + self.b * epexdam_eur_mwh
+
+
+@dataclass(frozen=True)
+class ContractConfig:
+    """Another supplier contract to compare the dynamic one with. ``periods`` maps a period name to its
+    formula; ``schedule`` maps 'weekday'/'weekend' → period → list of (from_hour, to_hour) local windows,
+    anything not covered is ``default_period``. A flat contract has one period and no schedule."""
+    name: str
+    kind: str                                    # "flat" | "tou"
+    periods: dict[str, Formula]
+    default_period: str
+    schedule: dict[str, dict[str, tuple[tuple[int, int], ...]]] = field(default_factory=dict)
+    fixed_fee_eur_year: float | None = None
+    note: str = ""
+
+
+@dataclass(frozen=True)
+class ContractsConfig:
+    items: tuple[ContractConfig, ...]
+    epexdam_reference_eur_mwh: float
+    epexdam_reference_month: str = ""
+    epexdam_min_days: int = 3
+
+
+@dataclass(frozen=True)
 class Config:
     bidding_zone: str
     timezone: str
@@ -90,6 +122,7 @@ class Config:
     output_dir: Path = Path("out")
     creg: CregConfig | None = None
     cost_stack: CostStackConfig | None = None
+    contracts: ContractsConfig | None = None
 
     @property
     def tz(self) -> ZoneInfo:
@@ -224,6 +257,74 @@ def _parse_cost_stack(raw: dict | None) -> CostStackConfig | None:
     )
 
 
+def _parse_formula(raw, where: str) -> Formula:
+    if not isinstance(raw, dict) or "a" not in raw or "b" not in raw:
+        raise ConfigError(f"{where} needs a formula with 'a' and 'b'")
+    try:
+        return Formula(float(raw["a"]), float(raw["b"]))
+    except (TypeError, ValueError) as exc:
+        raise ConfigError(f"{where}: a and b must be numbers") from exc
+
+
+def _parse_hours(raw, where: str) -> tuple[tuple[int, int], ...]:
+    out = []
+    for item in raw or []:
+        m = re.fullmatch(r"\s*(\d{1,2})\s*-\s*(\d{1,2})\s*", str(item))
+        if not m:
+            raise ConfigError(f"{where}: hour window must look like \"07-11\", got {item!r}")
+        a, b = int(m.group(1)), int(m.group(2))
+        if not (0 <= a <= 24 and 0 <= b <= 24):
+            raise ConfigError(f"{where}: hours must be 0–24, got {item!r}")
+        out.append((a, b))
+    return tuple(out)
+
+
+def _parse_contracts(raw: dict | None) -> ContractsConfig | None:
+    if not raw:
+        return None
+    items_raw = raw.get("items") or []
+    epex = raw.get("epexdam") or {}
+    if "reference_eur_mwh" not in epex:
+        raise ConfigError("contracts.epexdam.reference_eur_mwh is required")
+    items: list[ContractConfig] = []
+    for i, c in enumerate(items_raw):
+        where = f"contracts.items[{i}]"
+        name = str(c.get("name", "")).strip()
+        if not name:
+            raise ConfigError(f"{where} needs a name")
+        kind = str(c.get("kind", "flat")).strip().lower()
+        if kind == "flat":
+            periods = {"enkel": _parse_formula(c.get("formula"), f"{where}.formula")}
+            default = "enkel"
+            schedule: dict = {}
+        elif kind == "tou":
+            periods = {str(k): _parse_formula(v, f"{where}.periods.{k}") for k, v in (c.get("periods") or {}).items()}
+            if not periods:
+                raise ConfigError(f"{where}.periods is required for kind 'tou'")
+            default = str(c.get("default_period", next(iter(periods))))
+            if default not in periods:
+                raise ConfigError(f"{where}.default_period {default!r} is not one of the periods")
+            schedule = {}
+            for day_kind, mapping in (c.get("schedule") or {}).items():
+                if day_kind not in ("weekday", "weekend"):
+                    raise ConfigError(f"{where}.schedule keys must be 'weekday' or 'weekend', got {day_kind!r}")
+                schedule[day_kind] = {}
+                for period, hours in (mapping or {}).items():
+                    if period not in periods:
+                        raise ConfigError(f"{where}.schedule.{day_kind}: unknown period {period!r}")
+                    schedule[day_kind][str(period)] = _parse_hours(hours, f"{where}.schedule.{day_kind}.{period}")
+        else:
+            raise ConfigError(f"{where}.kind must be 'flat' or 'tou', got {kind!r}")
+        fee = c.get("fixed_fee_eur_year")
+        items.append(ContractConfig(name=name, kind=kind, periods=periods, default_period=default,
+                                    schedule=schedule, fixed_fee_eur_year=float(fee) if fee is not None else None,
+                                    note=str(c.get("note", ""))))
+    return ContractsConfig(items=tuple(items),
+                           epexdam_reference_eur_mwh=float(epex["reference_eur_mwh"]),
+                           epexdam_reference_month=str(epex.get("reference_month", "")),
+                           epexdam_min_days=int(epex.get("min_days", 3)))
+
+
 def load_config(path: str | Path = "config.yaml", env: dict | None = None) -> Config:
     env = os.environ if env is None else env
     raw = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
@@ -262,4 +363,5 @@ def load_config(path: str | Path = "config.yaml", env: dict | None = None) -> Co
         output_dir=Path(raw.get("output_dir", "out")),
         creg=_parse_creg(raw.get("creg")),
         cost_stack=_parse_cost_stack(raw.get("cost_stack")),
+        contracts=_parse_contracts(raw.get("contracts")),
     )

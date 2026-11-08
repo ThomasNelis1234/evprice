@@ -19,6 +19,7 @@ from email.utils import make_msgid
 
 import pandas as pd
 
+from . import contracts as contracts_mod
 from . import nl
 from .config import Config
 from .models import UNIT, DailyBundle, Recommendation
@@ -48,6 +49,8 @@ C = {
     "red_bg": "#fbe7e4",
     "purple": "#7a3fb8",
     "purple_bg": "#f1eaf9",
+    "teal": "#0e7c86",
+    "teal_bg": "#e6f3f4",
     "grey_bg": "#f6f6f3",
 }
 FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
@@ -141,6 +144,24 @@ def body_text(bundle: DailyBundle, recs: list[Recommendation], tz) -> str:
                          + (f", laden begrensd op {nl.num(st.charger_power_kw)} kW" if st.charger_power_kw else "") + ").")
         else:
             lines.append("Het capaciteitstarief (maandpiek) zit hier niet in; laad traag genoeg om je piek niet op te drijven.")
+        lines.append("")
+    if bundle.contracts:
+        cc = bundle.contracts
+        lines.append("Vergelijking met andere ENGIE-contracten (zelfde nettarieven en heffingen; EPEXDAM "
+                     f"{cc.epexdam.describe()}):")
+        if cc.dynamic_best_c_per_kwh is not None:
+            lines.append(f"  {'Jouw Dynamic':<22} beste venster {nl.num(cc.dynamic_best_c_per_kwh):>5} c€/kWh"
+                         + (f" ≈ {_eur_session(cc.dynamic_best_c_per_kwh, cc.charge_kwh)} per laadbeurt van {nl.num(cc.charge_kwh)} kWh" if cc.charge_kwh else ""))
+        for item in cc.items:
+            m = cc.margin_best(item)
+            if item.best_all_in_c_per_kwh is not None and m is not None:
+                lines.append(f"  {item.contract.name:<22} beste venster {nl.num(item.best_all_in_c_per_kwh):>5} c€/kWh"
+                             + (f" ≈ {_eur_session(item.best_all_in_c_per_kwh, cc.charge_kwh)}" if cc.charge_kwh else "")
+                             + f" → dynamisch {'goedkoper' if m >= 0 else 'duurder'} met {nl.num(abs(m))} c€/kWh")
+            fb = item.flat_break_even
+            lines.append(f"  {'':<22} break-even day-ahead: "
+                         + (f"{fb:.0f} {UNIT}" if fb is not None else
+                            f"{float(item.break_even.min()):.0f}–{float(item.break_even.max()):.0f} {UNIT} naargelang het uur"))
         lines.append("")
     if bundle.forecast is not None and not bundle.forecast.empty:
         f = bundle.forecast
@@ -342,6 +363,77 @@ def _creg(bundle: DailyBundle) -> str:
     return _card(inner, bg=C["purple_bg"], accent=C["purple"])
 
 
+def _eur_session(c_per_kwh: float, kwh: float) -> str:
+    return nl.num(c_per_kwh * kwh / 100, 2) + "\u00a0€"
+
+
+def _contracts(bundle: DailyBundle) -> str:
+    cc = bundle.contracts
+    if cc is None:
+        return ""
+    kwh = cc.charge_kwh
+    has_best = cc.dynamic_best_c_per_kwh is not None
+
+    def cell_cost(value: float | None) -> str:
+        if value is None:
+            return f'<td align="right" style="padding:6px 0 6px 8px;border-top:1px solid {C["line"]};color:{C["faint"]};">—</td>'
+        session = f'<br><span style="font-size:12px;color:{C["muted"]};">{_e(_eur_session(value, kwh))} per laadbeurt</span>' if kwh else ""
+        return (f'<td align="right" style="padding:6px 0 6px 8px;border-top:1px solid {C["line"]};font-size:15px;line-height:20px;'
+                f'white-space:nowrap;"><strong>{_e(nl.num(value))}</strong> <span style="font-size:12px;color:{C["muted"]};">c€/kWh</span>{session}</td>')
+
+    def cell_margin(margin: float | None) -> str:
+        if margin is None:
+            return f'<td style="border-top:1px solid {C["line"]};"></td>'
+        good = margin >= 0
+        color = C["green_dark"] if good else C["red"]
+        txt = f'{"+" if good else "−"}{nl.num(abs(margin))}'   # + = the other contract costs more
+        return (f'<td align="right" style="padding:6px 0 6px 12px;border-top:1px solid {C["line"]};font-size:14px;line-height:20px;'
+                f'font-weight:700;color:{color};white-space:nowrap;">{_e(txt)}</td>')
+
+    rows = (
+        f'<tr><td style="padding:6px 0;border-top:1px solid {C["line"]};font-size:14px;line-height:20px;">'
+        f'<strong>Jouw Dynamic</strong><br><span style="font-size:12px;color:{C["muted"]};">kwartierprijs = day-ahead</span></td>'
+        + cell_cost(cc.dynamic_best_c_per_kwh if has_best else None)
+        + f'<td style="border-top:1px solid {C["line"]};"></td></tr>'
+    )
+    for item in cc.items:
+        periods = ", ".join(contracts_mod.PERIOD_LABELS_NL.get(p, p) for p in item.best_periods) if item.contract.kind == "tou" else ""
+        sub = _e(item.contract.note) if item.contract.note else ""
+        if periods:
+            sub = (sub + " · " if sub else "") + f"beste venster valt in {_e(periods)}"
+        rows += (
+            f'<tr><td style="padding:6px 0;border-top:1px solid {C["line"]};font-size:14px;line-height:20px;color:{C["muted"]};">'
+            f'<span style="color:{C["text"]};">{_e(item.contract.name)}</span>'
+            + (f'<br><span style="font-size:12px;">{sub}</span>' if sub else "") + '</td>'
+            + cell_cost(item.best_all_in_c_per_kwh)
+            + cell_margin(cc.margin_best(item))
+            + '</tr>'
+        )
+    session_txt = f" en voor één laadbeurt van {_e(nl.num(kwh))} kWh" if kwh else ""
+    fees = "; ".join(f"{_e(i.contract.name)} {_e(nl.num(i.contract.fixed_fee_eur_year, 2))} €/jaar"
+                     for i in cc.items if i.contract.fixed_fee_eur_year is not None)
+    inner = (
+        _label("⚖️", "Vergelijking met andere ENGIE-contracten", C["teal"]) +
+        f'<div style="font-size:15px;line-height:22px;margin-top:6px;">'
+        f'Wat dezelfde kWh in het beste venster zou kosten op een ander contract{session_txt}. '
+        f'Nettarieven, heffingen en btw zijn voor elk contract gelijk; alleen de energieprijs verschilt. '
+        f'Groen = dat contract zou meer kosten dan jouw Dynamic (+ c€/kWh), rood = minder.</div>'
+        f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:10px;font-family:{FONT};">'
+        f'<tr><td style="font-size:11px;line-height:16px;color:{C["faint"]};text-transform:uppercase;letter-spacing:0.5px;">Contract</td>'
+        f'<td align="right" style="padding-left:8px;font-size:11px;line-height:16px;color:{C["faint"]};text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap;">Beste venster</td>'
+        f'<td align="right" style="padding-left:12px;font-size:11px;line-height:16px;color:{C["faint"]};text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap;">vs Dynamic</td></tr>'
+        f'{rows}</table>'
+        f'<div style="font-size:12px;line-height:18px;color:{C["muted"]};margin-top:10px;">'
+        f'Variabele contracten rekenen één maandprijs aan, geïndexeerd op EPEXDAM (het maandgemiddelde van de day-aheadprijs), '
+        f'hier {_e(cc.epexdam.describe())}. De gestippelde lijnen op de grafiek tonen vanaf welke day-aheadprijs zo\'n contract '
+        f'goedkoper zou zijn dan dynamisch laden. Een gemiddelde kWh van de getoonde periode kost op Dynamic '
+        f'{_e(nl.num(cc.dynamic_period_c_per_kwh))} c€/kWh, tegenover '
+        + ", ".join(f"{_e(i.contract.name)} {_e(nl.num(i.period_all_in_c_per_kwh))}" for i in cc.items)
+        + f'. Vaste vergoedingen tellen niet mee ({fees}). Tariefkaarten Vlaams Gewest, november 2026.</div>'
+    )
+    return _card(inner, bg=C["teal_bg"], accent=C["teal"])
+
+
 def _forecast(bundle: DailyBundle) -> str:
     if bundle.forecast is not None and not bundle.forecast.empty:
         f = bundle.forecast
@@ -367,8 +459,10 @@ def _warnings(bundle: DailyBundle) -> str:
     return _card(inner, bg=C["amber_bg"], accent=C["amber"])
 
 
-def _chart(cid: str, alt: str, with_creg: bool) -> str:
+def _chart(cid: str, alt: str, with_creg: bool, with_contracts: bool = False) -> str:
     creg_txt = "paars = break-even t.o.v. het CREG-tarief, " if with_creg else ""
+    if with_contracts:
+        creg_txt += "gestippeld = break-even t.o.v. andere ENGIE-contracten, "
     return (
         f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
         f'style="border-collapse:separate;border-radius:12px;background-color:{C["card"]};" bgcolor="{C["card"]}">'
@@ -421,9 +515,10 @@ def body_html(bundle: DailyBundle, recs: list[Recommendation], tz, cid: str) -> 
         (_alternative(bundle, recs), False),
         (_stats(bundle), True),
         (_creg(bundle), False),
+        (_contracts(bundle), False),
         (_forecast(bundle), False),
         (_warnings(bundle), False),
-        (_chart(cid, f"Grafiek van de kwartierprijzen ({UNIT}) met het aanbevolen laadvenster", bundle.creg is not None), False),
+        (_chart(cid, f"Grafiek van de kwartierprijzen ({UNIT}) met het aanbevolen laadvenster", bundle.creg is not None, bundle.contracts is not None), False),
         (_footer(bundle, tz), False),
     ]
     body_rows = "".join(_row(s, columns) + _spacer(12) for s, columns in sections if s)

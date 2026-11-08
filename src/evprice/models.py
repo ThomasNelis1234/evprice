@@ -96,6 +96,7 @@ class DailyBundle:
     forecast_known_until: pd.Timestamp | None = None
     warnings: list[str] = field(default_factory=list)
     creg: object | None = None                 # creg.CregComparison once computed (None = not configured)
+    contracts: object | None = None            # contracts.ContractsComparison once computed (None = not configured)
 
     @property
     def period_average(self) -> float:

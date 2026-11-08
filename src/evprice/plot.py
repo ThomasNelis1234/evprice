@@ -38,6 +38,7 @@ AVG_PERIOD = "#52514e"
 AVG_HIST = "#9a9893"
 CREG = "#7a3fb8"         # break-even line vs the CREG reimbursement tariff
 CREG_FILL = "#efe6f8"
+CONTRACTS = ["#0e7c86", "#b8860b", "#8c4a3c"]   # break-even lines vs other contracts (teal, ochre, brick)
 
 FORECAST_MAE = 20.0      # EUR/MWh ≈ 2 ct/kWh, author's reported 2-day MAE for BE
 
@@ -99,6 +100,21 @@ def render_png(bundle: DailyBundle, recs: list[Recommendation], tz, generated_at
     ax.axhline(bundle.history_average, color=AVG_HIST, lw=1.2, ls=":", zorder=3,
                label=f"Gemiddelde vorige 30 dagen: {nl.num(bundle.history_average)} {UNIT}")
 
+    # --- break-even vs other contracts: flat line, or a step profile for time-of-use contracts
+    contracts = bundle.contracts
+    if contracts is not None:
+        for i, item in enumerate(contracts.items):
+            color = CONTRACTS[i % len(CONTRACTS)]
+            flat = item.flat_break_even
+            if flat is not None:
+                ax.axhline(flat, color=color, lw=1.4, ls=(0, (3, 2, 1, 2)), zorder=3,
+                           label=f"Break-even {item.contract.name}: {flat:.0f} {UNIT}")
+            else:
+                bx, by = _step_xy(item.break_even)
+                lo_, hi_ = float(item.break_even.min()), float(item.break_even.max())
+                ax.step(bx, by, where="post", color=color, lw=1.4, ls=(0, (3, 2, 1, 2)), zorder=3,
+                        label=f"Break-even {item.contract.name}: {lo_:.0f}–{hi_:.0f} {UNIT} (per uur)")
+
     # --- published prices
     x, y = _step_xy(actual)
     ax.step(x, y, where="post", color=ACTUAL, lw=2.2, zorder=5,
@@ -126,6 +142,15 @@ def render_png(bundle: DailyBundle, recs: list[Recommendation], tz, generated_at
         ax.annotate(f"CREG break-even {be:.0f}", xy=(x_end, be), xycoords="data", xytext=(-4, 3),
                     textcoords="offset points", ha="right", va="bottom", fontsize=FS_NOTE, color=CREG,
                     fontweight="bold", zorder=6)
+    if contracts is not None:
+        lo, hi = ax.get_ylim()
+        top = max(float(item.break_even.max()) for item in contracts.items)
+        if top > hi - (hi - lo) * 0.04:
+            ax.set_ylim(lo, top + (hi - lo) * 0.08)
+        for i, item in enumerate(contracts.items):   # short tag at the right edge, like the CREG one
+            ax.annotate(item.contract.name, xy=(x_end, float(item.break_even.iloc[-1])), xycoords="data",
+                        xytext=(-4, 3), textcoords="offset points", ha="right", va="bottom", fontsize=FS_NOTE - 1,
+                        color=CONTRACTS[i % len(CONTRACTS)], zorder=6)
     ax.xaxis.set_major_locator(mdates.HourLocator(byhour=range(0, 24, 3), tz=tz))
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M", tz=tz))
     ax.tick_params(axis="x", labelsize=FS_TICK, colors=TEXT_2, length=0)
